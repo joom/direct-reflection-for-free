@@ -157,6 +157,14 @@
 
 \TODO{how we can map Generic to data types in the object language}
 
+\section{Problem}
+
+Implementing metaprogramming, even for toy languages, has been a cumbersome task that makes maintenance much more costly.
+If we are working with a typed meta language and another typed object language, then one often needs to redefine the AST data type in the object language, so that we would have a syntax tree representation in the object language.
+The problem with this is that one has to keep the AST in the compiler implementation and the AST representative data type in the object language, which we can call the ``reflected AST'', in sync.
+Even though defining these separately has advantages, it also leads to high code duplication.
+Ideally, we would like to have a two-way mapping between the meta language and the object language, which would save us from the code duplication.
+
 % \input{introduction}
 % \input{design}
 % \input{implementation}
