@@ -1,9 +1,12 @@
-\documentclass[sigplan, authordraft]{acmart}
+\documentclass[format=sigplan, review=false, screen=true, 9pt]{acmart}
+\settopmatter{printacmref=false} % Removes citation information below abstract
+\renewcommand\footnotetextcopyrightpermission[1]{} % removes footnote with conference information in first column
+\pagestyle{plain} % removes running headers
 
 % Copyright
-%\setcopyright{none}
+\setcopyright{none}
 %\setcopyright{acmcopyright}
-\setcopyright{acmlicensed}
+%\setcopyright{acmlicensed}
 %\setcopyright{rightsretained}
 %\setcopyright{usgov}
 %\setcopyright{usgovmixed}
@@ -17,46 +20,48 @@
 \acmISBN{}
 
 %Conference
-\acmConference[ICFP'19]{the 24th ACM SIGPLAN International Conference on Functional Programming}{August 18-25, 2019}{Berlin, Germany}
-\acmYear{2019}
-\copyrightyear{2019}
-\acmPrice{15.00}
-\acmSubmissionID{}
+\acmConference[NYPLSE'19]{New York Seminar on Programming Languages and Software Engineering}{February 25, 2019}{New York, NY}
+% \acmYear{2019}
+% \copyrightyear{2019}
+% \acmPrice{15.00}
+% \acmSubmissionID{}
 
 \usepackage{enumerate, enumitem}
 \usepackage{fancyvrb}
 \fvset{commandchars=\\\{\}}
 \usepackage{xcolor}
 \usepackage{setspace}
+\usepackage{textgreek}
 \usepackage{todonotes}
 \usepackage{tikz-cd}
 \usepackage{adjustbox}
-% Idris
+\usepackage{multicol}
+% Code
 % in REPL run `:pp latex 80 <expr>` to get the colored verbatim
 
 \usepackage{amssymb}
 \newcommand\fakeslant[1]{%
   \special{pdf: literal 1 0 0.167 1 0 0 cm}#1\special{pdf: literal 1 0 -0.167 1 0 0 cm}}
-\definecolor{IdrisRed}{HTML}{BC0045}
-\definecolor{IdrisBlue}{HTML}{0000d6}
-\definecolor{IdrisGreen}{HTML}{008b00}
-\definecolor{IdrisLilac}{HTML}{AC22BF}
-\definecolor{IdrisYellow}{HTML}{E16800}
-\definecolor{IdrisLightBlue}{HTML}{A4CDFF}
-\newcommand{\IdrisData}[1]{\textcolor{IdrisRed}{#1}}
-\newcommand{\IdrisType}[1]{\textcolor{IdrisBlue}{#1}}
-\newcommand{\IdrisBound}[1]{\textcolor{IdrisLilac}{\fakeslant{#1}}}
-\newcommand{\IdrisFunction}[1]{\textcolor{IdrisGreen}{#1}}
-\newcommand{\IdrisMetavar}[1]{\textcolor{IdrisYellow}{#1}}
-\newcommand{\IdrisKeyword}[1]{{\textbf{#1}}}
-\newcommand{\IdrisImplicit}[1]{{\itshape \IdrisBound{#1}}}
-\newcommand{\ty}[1]{\IdrisType{\texttt{#1}}}
-\newcommand{\kw}[1]{\IdrisKeyword{\texttt{#1}}}
-\newcommand{\fn}[1]{\IdrisFunction{\texttt{#1}}}
-\newcommand{\dt}[1]{\IdrisData{\texttt{#1}}}
-\newcommand{\bn}[1]{\IdrisBound{\texttt{#1}}}
+\definecolor{CodeRed}{HTML}{BC0045}
+\definecolor{CodeBlue}{HTML}{0000d6}
+\definecolor{CodeGreen}{HTML}{008b00}
+\definecolor{CodeLilac}{HTML}{AC22BF}
+\definecolor{CodeYellow}{HTML}{E16800}
+\definecolor{CodeLightBlue}{HTML}{A4CDFF}
+\newcommand{\CodeData}[1]{\textcolor{CodeRed}{#1}}
+\newcommand{\CodeType}[1]{\textcolor{CodeBlue}{#1}}
+\newcommand{\CodeBound}[1]{\textcolor{CodeLilac}{\fakeslant{#1}}}
+\newcommand{\CodeFunction}[1]{\textcolor{CodeGreen}{#1}}
+\newcommand{\CodeMetavar}[1]{\textcolor{CodeYellow}{#1}}
+\newcommand{\CodeKeyword}[1]{{\textbf{#1}}}
+\newcommand{\CodeImplicit}[1]{{\itshape \CodeBound{#1}}}
+\newcommand{\ty}[1]{\CodeType{\texttt{#1}}}
+\newcommand{\kw}[1]{\CodeKeyword{\texttt{#1}}}
+\newcommand{\fn}[1]{\CodeFunction{\texttt{#1}}}
+\newcommand{\dt}[1]{\CodeData{\texttt{#1}}}
+\newcommand{\bn}[1]{\CodeBound{\texttt{#1}}}
 \newcommand{\cm}[1]{\textcolor{darkgray}{\texttt{#1}}}
-\newcommand{\hole}[1]{\IdrisMetavar{\texttt{?}\IdrisMetavar{\texttt{#1}}}}
+\newcommand{\hole}[1]{\CodeMetavar{\texttt{?}\CodeMetavar{\texttt{#1}}}}
 \newcommand{\Elab}{\ty{Elab}}
 \newcommand{\IO}{\ty{IO}}
 \newcommand{\String}{\ty{String}}
@@ -73,11 +78,18 @@
 \newcommand{\qt}[1]{\kw{\`{}(}{#1}\kw{)}} %quotation `(...)
 \newcommand{\antiqt}{\kw{\textasciitilde}} %antiquotation ~
 
+\newcommand{\lam}{\texorpdfstring{\textlambda}{lambda}}
+\newcommand{\Lam}{\texorpdfstring{\textlambda}{Lambda}}
+\newcommand{\moo}{\texorpdfstring{\textmu}{mu}}
+% \newcommand{\lam}{\textlambda}
+% \newcommand{\Lam}{\textlambda}
+% \newcommand{\moo}{\textmu}
+
 % Replicating selecting regions in the editor:
-% \newcommand{\select}[1]{\fcolorbox{black}{IdrisLightBlue}{#1}}
+% \newcommand{\select}[1]{\fcolorbox{black}{CodeLightBlue}{#1}}
 % A version of select without any space around the box.
 % Hard to see in black & white so I chose the one with the space
-\newcommand{\select}[1]{{\setlength{\fboxsep}{0.05cm}\fcolorbox{black}{IdrisLightBlue}{#1}}}
+\newcommand{\select}[1]{{\setlength{\fboxsep}{0.05cm}\fcolorbox{black}{CodeLightBlue}{#1}}}
 
 \newcommand{\Red}[1]{{\color{red} #1}}
 \newcommand{\TODO}[1]{{\color{red}{[TODO: #1]}}}
@@ -89,9 +101,10 @@
 \newcommand\colorwave[1][blue]{\bgroup \markoverwith{\lower3.5\p@\hbox{\sixly \textcolor{#1}{\char58}}}\ULon}
 \font\sixly=lasy6 % does not re-load if already loaded, so no memory problem.
 \makeatother
-\newcommand{\IdrisError}[1]{\colorwave[red]{#1}}
+\newcommand{\CodeError}[1]{\colorwave[red]{#1}}
 
 \sloppy
+\hyphenpenalty=10000
 
 %% Get rid of sloppy line breaks in \citet citations
 \bibpunct{\nolinebreak[4][}{]}{,}{n}{}{,}
@@ -110,17 +123,38 @@
 \orcid{0000-0001-6784-7108}
 \affiliation{
   \institution{Princeton University}
-  \city{Princeton}
-  \state{New Jersey}
-  \country{USA}
+  % \city{Princeton}
+  % \state{New Jersey}
+  % \country{USA}
 }
 \email{joomy@cs.princeton.edu}
 
 \renewcommand{\shortauthors}{Joomy Korkut}
 
-\begin{abstract}
-  For almost a decade now, Haskell has been equipped for the ability to derive the \ty{Generic} type class, which describes the shape of a data type~\cite{magalhaes2010generic}.
+\newcommand{\lc}{\mbox{\lam-calculus}}
+\newcommand{\Lc}{\mbox{\Lam-calculus}}
 
+\begin{abstract}
+Haskell is considered to be one of the best in class when it comes to compiler development~\cite{sotu}.
+It has been the metalanguage of choice for production-ready languages such as Elm, PureScript and Idris, proof of concept implementations such as \mbox{Pugs (of Perl 6)}, and many toy languages.
+However, adding a metaprogramming system, even for toy languages, is a cumbersome task that makes maintenance costly.
+Once any metaprogramming feature is implemented, every change to the abstract syntax tree (AST) may require that feature to be updated, since it would depend on the shape of the entire AST --- namely quasiquotation~\cite{idrisQuotation}.
+
+For almost two decades, Haskell has been equipped with the Scrap Your
+Boilerplate~\cite{syb} style of generic programming, which lets users traverse
+abstract data types with less boilerplate code.
+In modern Haskell, this style is embodied by the \ty{Data} and \ty{Typeable}
+type classes, which can be derived automatically.
+
+In this talk, I will present a trick that takes advantage of this method
+when we implement toy programming languages in Haskell and decide to add
+metaprogramming features. I will show that this trick
+can be used to convert any Haskell type (with an instance of the type classes
+above), back and forth with our all-time favorite toy language: \lc.
+We \mbox{\emph{reflect}} Haskell values into their Scott encodings~\cite{scott}
+in the \lc\ AST, and \mbox{\emph{reify}} them back to Haskell values.
+This conversion can then be used to add metaprogramming features via direct
+reflection, to the languages we implement in Haskell.
 \end{abstract}
 
 %
@@ -128,55 +162,124 @@
 % http://dl.acm.org/ccs.cfm
 % Please copy and insert the code instead of the example below.
 %
- \begin{CCSXML}
-<ccs2012>
-<concept>
-<concept_id>10011007.10011006.10011008.10011009.10011012</concept_id>
-<concept_desc>Software and its engineering~Functional languages</concept_desc>
-<concept_significance>300</concept_significance>
-</concept>
-<concept>
-<concept_id>10011007.10011006.10011008.10011024.10011028</concept_id>
-<concept_desc>Software and its engineering~Data types and structures</concept_desc>
-<concept_significance>300</concept_significance>
-</concept>
-</ccs2012>
-\end{CCSXML}
+% \begin{CCSXML}
+% <ccs2012>
+% <concept>
+% <concept_id>10011007.10011006.10011008.10011009.10011012</concept_id>
+% <concept_desc>Software and its engineering~Functional languages</concept_desc>
+% <concept_significance>300</concept_significance>
+% </concept>
+% <concept>
+% <concept_id>10011007.10011006.10011008.10011024.10011028</concept_id>
+% <concept_desc>Software and its engineering~Data types and structures</concept_desc>
+% <concept_significance>300</concept_significance>
+% </concept>
+% </ccs2012>
+% \end{CCSXML}
 
-\ccsdesc[300]{Software and its engineering~Functional languages}
-\ccsdesc[300]{Software and its engineering~Data types and structures}
+% \ccsdesc[300]{Software and its engineering~Functional languages}
+% \ccsdesc[300]{Software and its engineering~Data types and structures}
 
-\keywords{Metaprogramming, generic programming, reflection}
+% \keywords{Metaprogramming, generic programming, reflection.}
 
 \maketitle
 
-\emph{This paper uses colors in the example code.}
+% \emph{This paper uses colors in the example code.}
 
-\section{Introduction}
+% \section*{Abstract}
+
+\section*{Abstraction}
+
+Our goal is to capture the representation of object language syntax trees within the same object language. Initially, it helps to generalize this into  the conversion of any metalanguage value into its encoding
+in the object language, whose AST is represented by the data type \ty{Exp}.
+We define a type class that encapsulates this conversion in both directions:
+\begin{Verbatim}
+\kw{class} \ty{Bridge} \bn{a} \kw{where}
+  \fn{reflect} :: \bn{a} -> \ty{Exp}
+  \fn{reify} :: \ty{Exp} -> \ty{Maybe} \bn{a}
+\end{Verbatim}
+Once a \ty{Bridge} instance is defined for a type \bn{a}, we will have a way to \fn{reflect} it into a representation in \ty{Exp}. However, if we have an \ty{Exp}, we can only recover a value of the type \bn{a} if it is a valid representation of it.
+
+For example, if our language contains a primitive type like strings, we can define an instance to declare how they should be converted back and forth:
+\begin{Verbatim}
+\kw{instance} \ty{Bridge} \ty{String} \kw{where}
+  \fn{reflect} \bn{s} = \dt{StrLit} \bn{s}
+  \fn{reify} (\dt{StrLit} \bn{s}) = \dt{Just} \bn{s}
+  \fn{reify} _ = \dt{Nothing}
+\end{Verbatim}
+The \fn{reify} function above states that if an expression is not a string
+literal, represented above with the constructor \dt{StrLit}, it is not possible
+to recover a Haskell string from it.
+
+\section*{Application: \lc\ and Scott encoding}
+% \subsection*{\Lc\ and Scott encoding}
+
+\newcommand{\enco}[1]{\lceil #1 \rceil}
+\newcommand{\benco}[1]{\big\lceil #1 \big\rceil}
 
 
-\TODO{how we can map Generic to data types in the object language}
+For a Haskell value $\dt{C}\ \bn{v\_1} \cdots \bn{v\_n}$ of type \ty{T},
+where \dt{C} is the $i$th constructor out of $m$ constructors of \ty{T},
+and \dt{C} has arity $n$, Scott encoding (denoted by $\enco{\ \ }$) of this value will be
+\begin{center}
+$\benco{\dt{C}\ \bn{v\_1} \cdots \bn{v\_n}} = \lambda c_1 \cdots c_m.\ \big(c_i\ \enco{\bn{v\_1}} \cdots \enco{\bn{v\_n}}\big)$
+\end{center}
 
-\section{Problem}
+For a Haskell data type \kw{data} \ty{Color} = \dt{Red} | \dt{Green},
+Scott \mbox{encodings} of the constructors will be
 
-Implementing metaprogramming, even for toy languages, has been a cumbersome task that makes maintenance much more costly.
-If we are working with a typed meta language and another typed object language, then one often needs to redefine the AST data type in the object language, so that we would have a syntax tree representation in the object language.
-The problem with this is that one has to keep the AST in the compiler implementation and the AST representative data type in the object language, which we can call the ``reflected AST'', in sync.
-Even though defining these separately has advantages, it also leads to high code duplication.
-Ideally, we would like to have a two-way mapping between the meta language and the object language, which would save us from the code duplication.
+\begin{center}
+\begin{tabular}{c c c}
+  $\enco{\dt{Red}} = \lambda c_1\ c_2.\ c_1$ & \ \ \ \ &
+    $\enco{\dt{Green}} = \lambda c_1\ c_2.\ c_2$
+\end{tabular}
+\end{center}
 
-% \input{introduction}
-% \input{design}
-% \input{implementation}
-% \input{applications}
-% \input{relatedwork}
-% \input{conclusion}
+If we decide to add a new constructor \dt{Blue} to the \ty{Color} data type, we must update each of the Scott encodings above accordingly, so that we have:
+\begin{center}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{c c c}
+  $\enco{\dt{Red}} = \lambda c_1\ c_2\ c_3.\ c_1$ &
+    $\enco{\dt{Green}} = \lambda c_1\ c_2\ c_3.\ c_2$ &
+    $\enco{\dt{Blue}} = \lambda c_1\ c_2\ c_3.\ c_3$
+\end{tabular}
+}
+\end{center}
 
-\section*{Acknowledgments}
+When we implement \lc\ in Haskell, we start by defining a data type for our AST, using Haskell strings for names:
+\begin{Verbatim}
+\kw{data} \ty{Exp} = \dt{Var} \ty{String} | \dt{App} \ty{Exp} \ty{Exp} | \dt{Abs} \ty{String} \ty{Exp}
+\end{Verbatim}
+For metaprogramming, we need a representation of \lc\ terms within \lc, and a \ty{Bridge} instance for \ty{Exp} would achieve exactly that; it would give us an easy way to convert between the signified (ones we want to reflect) and signifier terms (ones that are the result of reflecting).
 
-We would like to thank Matt Chan and Gabriel Gonzalez for inspiring the idea of a bridge between the meta language and the object language.
+However, as we develop the language, we often need to add new constructors to the AST.
+If we define a \ty{Bridge} instance now, and add more constructors to \ty{Exp}, then the previous \ty{Bridge} instance becomes obsolete.
+Suppose we want to add string literal, quasiquote and antiquote expressions:
+\begin{Verbatim}
+\kw{data} \ty{Exp} = \dt{Var} \ty{String} | \dt{App} \ty{Exp} \ty{Exp} | \dt{Abs} \ty{String} \ty{Exp}
+         | \dt{StrLit} \ty{String} | \dt{Quasiq} \ty{Exp} | \dt{Antiq} \ty{Exp}
+\end{Verbatim}
+How do we make sure that the \ty{Bridge} instance does not become obsolete?
+The answer is to avoid defining a special \ty{Bridge} instance for the \ty{Exp} type.
+Ideally, we would like to have one \emph{for free}, based on a different type class. This is where generic programming comes in. Using the \ty{Data} and \ty{Typeable} type classes, we define a \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}} instance.
+Once defined, implementation of certain metaprogramming features via \emph{direct reflection}~\cite{barzilayphd} becomes very easy. Now implementing quasiquotation is just a matter of adding two lines to the evaluation function:
+% \fn{eval} :: \ty{Exp} -> \ty{Exp}
+% \kw{...}
+\begin{Verbatim}
+\fn{eval} (\dt{Quasiq} \bn{e}) = \fn{reflect} \bn{e}
+\fn{eval} (\dt{Antiq} \bn{e}) = \kw{let} \dt{Just} \bn{e'} = \fn{reify} (\fn{eval} e) \kw{in} \bn{e'}
+\end{Verbatim}
 
+In my talk, I will describe this trick and show its applications in typed languages such as simply-typed \lc\ with \textmu-types and the calculus of constructions, to implement more complex metaprogramming features.
+
+
+% \section*{Acknowledgments}
+% I would like to thank Matt Chan and Gabriel Gonzalez for inspiring the idea of a bridge between the meta language and the object language.
+% \vspace{0.5em}
+
+\hrulefill
 \bibliographystyle{ACM-Reference-Format}
+\renewcommand{\bibsection}{}
 \bibliography{paper}
 
 \end{document}
