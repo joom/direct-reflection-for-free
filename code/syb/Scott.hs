@@ -1,28 +1,11 @@
-{-|
-The goal is to get a mechanism like elaborator reflection for free,
-using Haskell's generics.
-
-In a few languages implemented in Haskell, there's a mechanism for reflecting
-the terms in the object language (whatever language is being implemented) to
-terms in the meta language (in this case, Haskell), and for reify terms in the meta language to the object language.
-Idris does this to simplify the implementation of its metaprogramming facilities. Dhall does this for evaluation of Dhall terms.
--}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE EmptyDataDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE IncoherentInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Scott where
@@ -30,25 +13,59 @@ module Scott where
 import qualified Data.Map as M
 import Data.Maybe
 import Control.Monad.State.Strict
+import Text.Parsec.String
+import Text.Parsec
 
-import Debug.Trace
-import Unsafe.Coerce
+import Common
 
 import Data.Typeable
 import Data.Data
 
--- Absbda calculus
-
+-- Lambda calculus
 data Exp =
-    Var String
-  | App Exp Exp
-  | Abs String Exp
-  | StrLit String
-  | IntLit Int
-  | MkUnit
-  | Quasiquote Exp
-  | Antiquote Exp
+    Var String       -- x
+  | App Exp Exp      -- e1 e2
+  | Abs String Exp   -- \x.x or λx.x, also works with nested \x y.x and such
+  | StrLit String    -- "asdf", can escape "as\"df"
+  | IntLit Int       -- 0
+  | MkUnit           -- ()
+  | Quasiquote Exp   -- `(e), where e is any expression
+  | Antiquote Exp    -- ~(e), where e is an AST Scott encoding
+  | Parse Exp        -- {e}, where e is a string expression, returns AST
+  | Pretty Exp       -- [e], where e is an AST Scott encoding, returns a string
   deriving (Show, Eq, Ord, Data, Typeable)
+
+parseExp :: String -> Either ParseError Exp
+parseExp input = parse exp "λ−calculus" input
+  where
+    lexeme p = spaces *> p <* spaces
+    parens p = char '(' *> p <* char ')'
+    quote p = string "`(" *> (Quasiquote <$> p) <* char ')'
+    antiquote p = string "~(" *> (Antiquote <$> p) <* char ')'
+    parseBr p = char '{' *> (Parse <$> p) <* char '}'
+    prettyBr p = char '[' *> (Pretty <$> p) <* char ']'
+    name = (:) <$> letter <*> many (digit <|> letter)
+    parseAbs = do
+      (char '\\' <|> char 'λ')
+      vs <- many1 (lexeme name)
+      lexeme $ char '.'
+      body <- exp
+      return $ foldr Abs body vs
+    parseVar = Var <$> name
+    parseUnit = string "()" *> return MkUnit
+    escape = do
+        d <- char '\\'
+        c <- oneOf "\\\"0nrvtbf" -- all the characters which can be escaped
+        return [d, c]
+    nonEscape = noneOf "\\\"\0\n\r\v\t\b\f"
+    character = fmap return nonEscape <|> escape
+    parseString = char '"' *> (StrLit . concat <$> many character) <* char '"'
+    parseInt = IntLit . read <$> many1 (digit :: Parser Char)
+    nonApp = try parseUnit <|> parens exp
+            <|> parseString <|> parseInt
+            <|> quote exp <|> antiquote exp <|> parseBr exp <|> prettyBr exp
+            <|> parseAbs <|> parseVar
+    exp = chainl1 (lexeme nonApp) $ return App
 
 pretty :: Exp -> String
 pretty (Var s) = s
@@ -70,12 +87,6 @@ lams xs e = foldr Abs e xs
 apps :: [Exp] -> Exp
 apps = foldl1 App
 
-isFree :: String -> Exp -> Bool
-isFree x (Var s) = x /= s
-isFree x (App e1 e2) = isFree x e1 && isFree x e2
-isFree x (Abs y e) = x == y || isFree x e
-isFree _ _ = True
-
 eval' :: M.Map String Exp -> Exp -> Exp
 eval' env e@(Var x) = fromMaybe e (M.lookup x env)
 eval' env (App (Abs x body) e) = eval' (M.insert x (eval' env e) env) body
@@ -85,32 +96,15 @@ eval' env (App e1 e2)
 eval' env (Abs x body) = Abs x $ eval' (M.insert x (Var x) env) body
 eval' env (Quasiquote e) = reflect e
 eval' env (Antiquote e) = fromJust (reify (eval e))
+eval' env (Parse e) = let StrLit s = eval e in
+                      case parseExp s of
+                        Left err -> error $ show err
+                        Right e' -> reflect e'
+eval' env (Pretty e) = StrLit $ pretty e
 eval' env e = e
 
+eval :: Exp -> Exp
 eval = eval' M.empty
-
-
--- Generic programming
-
-getTypeRep :: forall a. Typeable a => TypeRep
-getTypeRep = typeOf @a undefined
-
-getDataType :: forall a. Data a => DataType
-getDataType = dataTypeOf @a undefined
-
-getConstrs :: forall a. Data a => Maybe [Constr]
-getConstrs = case dataTypeRep (getDataType @a) of
-               AlgRep cs -> Just cs
-               _ -> Nothing
-
-getNumOfConstrs :: forall a. Data a => Int
-getNumOfConstrs = maybe 0 id (length <$> getConstrs @a)
-
-constrToScott :: forall a. Data a => Constr -> ([String], String)
-constrToScott c = (ctorArgs, ctorArgs !! (constrIndex c - 1))
-  where
-    names s = map ((s ++) . show) [0..]
-    ctorArgs = take (getNumOfConstrs @a) (names "c") -- arg names representing each ctor
 
 collectAbs :: Exp -> ([String], Exp)
 collectAbs (Abs x e) = let (l, e') = collectAbs e in (x:l, e')
@@ -120,6 +114,13 @@ spineView :: Exp -> (Exp, [Exp])
 spineView (App e1 e2) = let (f, l) = spineView e1 in (f, l ++ [e2])
 spineView e = (e, [])
 
+constrToScott :: forall a. Data a => Constr -> ([String], String)
+constrToScott c = (ctorArgs, ctorArgs !! (constrIndex c - 1))
+  where
+    names s = map ((s ++) . show) [0..]
+    ctorArgs = take (getNumOfConstrs @a) (names "c")
+
+    -- ^ arg names representing each ctor
 -- The interesting type class
 class Bridge a where
   reflect :: a -> Exp
@@ -137,10 +138,9 @@ instance Bridge Int where
 
 instance Data a => Bridge a where
   reflect v
-    | getTypeRep @a == getTypeRep @Int = reflect @Int (unsafeCoerce v)
-    | getTypeRep @a == getTypeRep @String = reflect @String (unsafeCoerce v)
+    | Just eq <- eqT @a @Int    = reflect (castWith eq v)
+    | Just eq <- eqT @a @String = reflect (castWith eq v)
     | otherwise =
-      -- trace ("\nDATA for " ++ show (getTypeRep @a) ++ "\n") $
         lams args (apps (Var c : gmapQ reflectArg v))
     where
       (args, c) = constrToScott @a (toConstr v)
@@ -148,15 +148,15 @@ instance Data a => Bridge a where
       reflectArg x = reflect @d x
 
   reify e
-    | getTypeRep @a == getTypeRep @Int = unsafeCoerce (reify @Int e)
-    | getTypeRep @a == getTypeRep @String = unsafeCoerce <$> (reify @String e)
+    | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reify e)
+    | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reify e)
     | otherwise =
       case collectAbs e of -- dissect the nested lambdas
         ([], _) -> Nothing
         (args, body) ->
           case spineView body of -- dissect the nested application
             (Var c, rest) -> do
-                ctors <- getConstrs @a
+                let ctors = getConstrs @a
                 ctor <- lookup c (zip args ctors)
                 evalStateT (fromConstrM reifyArg ctor) rest
             _ -> Nothing
@@ -172,6 +172,20 @@ roundTrip x = reify @a ((reflect @a x))
 reflectIO :: forall a. Data a => a -> IO ()
 reflectIO x = putStrLn $ pretty $ reflect @a x
 
+-- | Very rudimentary REPL, ideally we'd like to use repline or haskeline
+-- but I wanted to make the module self-contained.
+repl :: IO ()
+repl = do
+  putStr ">> "
+  x <- getLine
+  case parseExp x of
+    Left err -> putStr "ERROR: " >> print err
+    Right exp -> putStrLn (pretty $ eval exp)
+  repl
+
+main :: IO ()
+main = repl
+
 -- Takes a Scott encoding of lambda terms and changes it into their Mogensen encoding
 -- toMogensen :: Exp -> Exp
 -- toMogensen e
@@ -186,26 +200,3 @@ reflectIO x = putStrLn $ pretty $ reflect @a x
 --     (args, body) = collectAbs e
 --     (Var c, rest) = spineView body
 --     argMap = zip args (fromJust (getConstrs @Exp))
-
-
--- num :: Int -> Exp
--- num n = Abs "s" $ Abs "z" $ foldr App (Var "z") (replicate n ((Var "s")))
-
-data Nat = S Nat | Z deriving (Show, Eq, Ord, Data, Typeable)
-three = S (S (S Z))
-
-data Number = Num Int deriving (Show, Eq, Ord, Data, Typeable)
-
-data Color =
-    Red
-  | Green
-  | Blue
-  deriving (Show, Eq, Ord, Data, Typeable)
-
-data Tree a =
-    Empty
-  | Node a (Tree a) (Tree a)
-  deriving (Show, Eq, Ord, Data, Typeable)
-
-balanced :: Tree Int
-balanced = Node 2 (Node 1 Empty Empty) (Node 3 Empty Empty)
