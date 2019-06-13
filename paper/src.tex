@@ -1,0 +1,111 @@
+\documentclass[format=acmsmall, review=false, screen=true]{acmart}
+
+\usepackage{booktabs} % For formal tables
+
+\usepackage[ruled]{algorithm2e} % For algorithms
+\renewcommand{\algorithmcfname}{ALGORITHM}
+\SetAlFnt{\small}
+\SetAlCapFnt{\small}
+\SetAlCapNameFnt{\small}
+\SetAlCapHSkip{0pt}
+\IncMargin{-\parindent}
+
+
+% Metadata Information
+\acmJournal{TWEB}
+\acmVolume{9}
+\acmNumber{4}
+\acmArticle{39}
+\acmYear{2010}
+\acmMonth{3}
+\copyrightyear{2009}
+%\acmArticleSeq{9}
+
+% Copyright
+%\setcopyright{acmcopyright}
+\setcopyright{acmlicensed}
+%\setcopyright{rightsretained}
+%\setcopyright{usgov}
+%\setcopyright{usgovmixed}
+%\setcopyright{cagov}
+%\setcopyright{cagovmixed}
+
+% DOI
+\acmDOI{0000001.0000001}
+
+% Paper history
+\received{February 2007}
+\received[revised]{March 2009}
+\received[accepted]{June 2009}
+
+
+% Document starts
+\begin{document}
+% Title portion. Note the short title for running heads
+\title{Direct Reflection for Free!}
+
+\author{Joomy Korkut}
+\orcid{0000-0001-6784-7108}
+\affiliation{
+  \institution{Princeton University}
+  \city{Princeton}
+  \state{New Jersey}
+  \country{USA}
+}
+\email{joomy@cs.princeton.edu}
+
+\renewcommand{\shortauthors}{Joomy Korkut}
+
+\begin{abstract}
+Procedural reflection has fallen out of popularity with the rise of statically typed, compiled languages like C and ML variants.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10011007.10011006.10011008.10011009.10011012</concept_id>
+<concept_desc>Software and its engineering~Functional languages</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10011006.10011008.10011024.10011028</concept_id>
+<concept_desc>Software and its engineering~Data types and structures</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10011006.10011041.10011047</concept_id>
+<concept_desc>Software and its engineering~Source code generation</concept_desc>
+<concept_significance>100</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[300]{Software and its engineering~Functional languages}
+\ccsdesc[300]{Software and its engineering~Data types and structures}
+\ccsdesc[100]{Software and its engineering~Source code generation}
+
+\keywords{Metaprogramming, generic programming, reflection.}
+
+\maketitle
+
+\emph{This paper uses colors in the example code.}
+
+\section{Introduction}
+
+Haskell is considered to be one of the best in class when it comes to compiler development~\cite{sotu}.
+It has been the metalanguage of choice for production-ready languages such as Elm, PureScript and Idris, proof of concept implementations such as \mbox{Pugs (of Perl 6)}, and many toy languages.
+However, adding a metaprogramming system, even for toy languages, is a cumbersome task that makes maintenance costly.
+Once any metaprogramming feature is implemented, every change to the abstract syntax tree (AST) may require that feature to be updated, since it would depend on the shape of the entire AST --- namely quasiquotation~\cite{idrisQuotation}.
+
+\begin{acks}
+We would like to thank Matt Chan and Gabriel Gonzalez for inspiring the idea of
+a bridge between the meta language and the object language.
+We would also like to thank Charlie Murphy for his help with the draft.
+\end{acks}
+
+% Bibliography
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{paper}
+
+
+\end{document}

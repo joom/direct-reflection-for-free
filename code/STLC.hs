@@ -31,7 +31,7 @@ module STLC where
 import Data.List
 import qualified Data.Map as M
 import Data.Maybe
-import qualified Control.Monad.State.Strict as S
+import Control.Monad.State.Strict
 
 import Text.Parsec
 import Text.Parsec.String
@@ -66,8 +66,8 @@ data Exp =
   | Unfold Exp
   | StrLit String
   | IntLit Int
-  | Inl Exp
-  | Inr Exp
+  | Inl Exp Ty
+  | Inr Exp Ty
   | MkPair Exp Exp
   | MkUnit
   | Let Stmt Exp
@@ -146,8 +146,8 @@ pretty e@(Abs _ _) = "(λ" ++ go e ++ ")"
         go e = ". " ++ pretty e
 pretty (StrLit s) = "\"" ++ s ++ "\""
 pretty (IntLit i) = show i
-pretty (Inl e) = "(inl " ++ pretty e ++ ")"
-pretty (Inr e) = "(inr " ++ pretty e ++ ")"
+pretty (Inl e t) = "(inl " ++ pretty e ++ " as " ++ prettyTy t ++ ")"
+pretty (Inr e t) = "(inr " ++ pretty e ++ " as " ++ prettyTy t ++ ")"
 pretty (MkPair e1 e2) = "(" ++ pretty e1 ++ " , " ++ pretty e2 ++ ")"
 pretty MkUnit = "()"
 -- pretty (Quasiquote e) = "`(" ++ pretty e ++ ")"
@@ -218,6 +218,17 @@ inferTy' ctx (Unfold e) = do
   case t of
     Mu x body -> return (substTy x (Mu x body) body)
     _ -> Nothing
+inferTy' ctx (MkPair e1 e2) = Pair <$> inferTy' ctx e1 <*> inferTy' ctx e2
+inferTy' ctx (Inl e t) = do
+  t1' <- inferTy' ctx e
+  case t of
+    Sum t1 t2 | t1 == t1' -> Just t
+    _ -> Nothing
+inferTy' ctx (Inr e t) = do
+  t2' <- inferTy' ctx e
+  case t of
+    Sum t1 t2 | t1 == t2' -> Just t
+    _ -> Nothing
 
 inferTy :: Exp -> Maybe Ty
 inferTy = inferTy' M.empty
@@ -270,42 +281,63 @@ instance Data a => Bridge a where
     | Just eq <- eqT @a @Int    = reflect (castWith eq v)
     | Just eq <- eqT @a @String = reflect (castWith eq v)
     | otherwise = folds $
-        case getConstrs @a of
-          [] -> error $ "You can't have a value of the type " ++ show (mkD @a) ++ " since it has no constructors"
-          _ -> sums (getConstrs @a) (foldr1def MkPair MkUnit (gmapQ reflectArg v))
-        where
-          rec = nub (concat (recD (mkD @a)))
-          folds e = iterate Fold e !! length rec
-          -- argMap = zip (getConstrs @a) (allConstrArgs (mkD @a))
+      case getConstrs @a of
+        [] -> error $ "You can't have a value of the type " ++ show (mkD @a) ++ " since it has no constructors"
+        _ -> sums (getConstrs @a) (foldr1def MkPair MkUnit (gmapQ reflectArg v))
+      where
+        rec = nub (concat (recD (mkD @a)))
+        folds e = iterate Fold e !! length rec
+        -- argMap = zip (getConstrs @a) (allConstrArgs (mkD @a))
 
-          sums :: [Constr] -> (Exp -> Exp)
-          sums [x, y] | x == toConstr v = Inl
-                      | y == toConstr v = Inr
-          sums [x] = id
-          sums (x:xs) | x == toConstr v = Inl
-                      | otherwise = Inr . sums xs
+        sums :: [Constr] -> Exp -> Exp
+        sums [x, y] e | x == toConstr v = Inl e undefined
+                      | y == toConstr v = Inr e undefined
+        sums [x] e = e
+        sums (x:xs) e | x == toConstr v = Inl e undefined
+                      | otherwise = Inr (sums xs e) undefined
 
-          reflectArg :: forall d. Data d => d -> Exp
-          reflectArg x = reflect @d x
+        reflectArg :: forall d. Data d => d -> Exp
+        reflectArg x = reflect @d x
 
   reify e
     | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reify e)
     | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reify e)
     | otherwise =
-          if length rec /= numFolds then Nothing else
-          undefined
-        where
-          rec = nub (concat (recD (mkD @a)))
+        if length rec /= numFolds then Nothing else
+        if iSum >= length ctors then Nothing else
+        evalStateT (fromConstrM reifyArg ctor) rest
+      where
+        rec = nub (concat (recD (mkD @a)))
 
-          countFolds n (Fold e) = countFolds (n + 1) e
-          countFolds n e = (n, e)
+        countFolds n (Fold e) = countFolds (n + 1) e
+        countFolds n e = (n, e)
 
-          (numFolds, e') = countFolds 0 e
+        (numFolds, e') = countFolds 0 e
+        ctors = getConstrs @a
 
-          countSums n (Inl e) = (n, e)
-          countSums n (Inr e) = (n + 1, e)
-          countSums n e = (n, e)
+        countSums n e | n + 1 == length ctors = (n, e)
+        countSums n (Inr (Inr e t) t') = countSums (n + 1) (Inr e t)
+        countSums n (Inr (Inl e t) t') = (n + 1, e)
+        countSums n (Inr e t) = (n + 1, e)
+        countSums n (Inl e t) = (n, e)
+        countSums n e = (n, e)
 
+        -- we should only strip Inl/Inr as much as it's allowed
+        (iSum, e'') = countSums 0 e'
+        ctor = ctors !! iSum
+        args = allConstrArgs (mkD @a) !! iSum
+
+        -- we should only strip MkPair as much as it's allowed
+        collectFromPair n e | n + 1 == length args = [e]
+        collectFromPair n (MkPair x y) = x : collectFromPair (n + 1) y
+        collectFromPair n e = [e]
+
+        rest = collectFromPair 0 e''
+
+        reifyArg :: forall d. Data d => StateT [Exp] Maybe d
+        reifyArg = do e <- gets head
+                      modify tail
+                      lift (reify @d e)
 
 roundTrip :: forall a. Data a => a -> Maybe a
 roundTrip x = reify @a ((reflect @a x))

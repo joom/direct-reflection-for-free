@@ -30,9 +30,10 @@ data Exp =
   | IntLit Int       -- 0
   | MkUnit           -- ()
   | Quasiquote Exp   -- `(e), where e is any expression
-  | Antiquote Exp    -- ~(e), where e is an AST Scott encoding
+  | Antiquote Exp    -- ~(e), where e is an AST in Scott encoding
+  | Eval Exp         -- [|e|], where e is an AST in Scott encoding, returns AST
   | Parse Exp        -- {e}, where e is a string expression, returns AST
-  | Pretty Exp       -- [e], where e is an AST Scott encoding, returns a string
+  | Pretty Exp       -- [e], where e is an AST in Scott encoding, returns a string
   deriving (Show, Eq, Ord, Data, Typeable)
 
 parseExp :: String -> Either ParseError Exp
@@ -42,6 +43,7 @@ parseExp input = parse exp "λ−calculus" input
     parens p = char '(' *> p <* char ')'
     quote p = string "`(" *> (Quasiquote <$> p) <* char ')'
     antiquote p = string "~(" *> (Antiquote <$> p) <* char ')'
+    evalBr p = string "[|" *> (Eval <$> p) <* string "|]"
     parseBr p = char '{' *> (Parse <$> p) <* char '}'
     prettyBr p = char '[' *> (Pretty <$> p) <* char ']'
     name = (:) <$> letter <*> many (digit <|> letter)
@@ -63,7 +65,7 @@ parseExp input = parse exp "λ−calculus" input
     parseInt = IntLit . read <$> many1 (digit :: Parser Char)
     nonApp = try parseUnit <|> parens exp
             <|> parseString <|> parseInt
-            <|> quote exp <|> antiquote exp <|> parseBr exp <|> prettyBr exp
+            <|> quote exp <|> antiquote exp <|> evalBr exp <|> parseBr exp <|> prettyBr exp
             <|> parseAbs <|> parseVar
     exp = chainl1 (lexeme nonApp) $ return App
 
@@ -86,6 +88,8 @@ lams xs e = foldr Abs e xs
 
 apps :: [Exp] -> Exp
 apps = foldl1 App
+
+type Ctx = M.Map String Exp
 
 eval' :: M.Map String Exp -> Exp -> Exp
 eval' env e@(Var x) = fromMaybe e (M.lookup x env)
@@ -135,6 +139,11 @@ instance Bridge Int where
   reflect n = IntLit n
   reify (IntLit n) = Just n
   reify _ = Nothing
+
+-- instance (Bridge a, Bridge b) => Bridge (a -> b) where
+--   reflect f = Abs "x" (App undefined (Var "x"))
+--   reify (Abs x e) = undefined
+--   reify _ = Nothing
 
 instance Data a => Bridge a where
   reflect v

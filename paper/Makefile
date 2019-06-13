@@ -1,5 +1,5 @@
+SOURCENAME=full
 FILENAME=thesis
-SOURCENAME=source
 OUTPUTNAME=output
 LATEX=xelatex
 

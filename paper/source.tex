@@ -153,8 +153,8 @@ can be used to convert any Haskell type (with an instance of the type classes
 above), back and forth with our all-time favorite toy language: \lc.
 We \mbox{\emph{reflect}} Haskell values into their Scott encodings~\cite{scott}
 in the \lc\ AST, and \mbox{\emph{reify}} them back to Haskell values.
-This conversion can then be used to add metaprogramming features via direct
-reflection, to the languages we implement in Haskell.
+This conversion can then be used to add metaprogramming features via
+  \emph{direct reflection}~\cite{barzilayphd}, to the languages we implement in Haskell.
 \end{abstract}
 
 %
@@ -198,7 +198,7 @@ We define a type class that encapsulates this conversion in both directions:
   \fn{reflect} :: \bn{a} -> \ty{Exp}
   \fn{reify} :: \ty{Exp} -> \ty{Maybe} \bn{a}
 \end{Verbatim}
-Once a \ty{Bridge} instance is defined for a type \bn{a}, we will have a way to \fn{reflect} it into a representation in \ty{Exp}. However, if we have an \ty{Exp}, we can only recover a value of the type \bn{a} if it is a valid representation of it.
+Once a \ty{Bridge} instance is defined for a type \bn{a}, we will have a way to \fn{reflect} it into a representation in \ty{Exp}. However, if we only have an \ty{Exp}, we can only recover a value of the type \bn{a} if that \ty{Exp} is a valid representation of the value.
 
 For example, if our language contains a primitive type like strings, we can define an instance to declare how they should be converted back and forth:
 \begin{Verbatim}
@@ -262,7 +262,7 @@ Suppose we want to add string literal, quasiquote and antiquote expressions:
 How do we make sure that the \ty{Bridge} instance does not become obsolete?
 The answer is to avoid defining a special \ty{Bridge} instance for the \ty{Exp} type.
 Ideally, we would like to have one \emph{for free}, based on a different type class. This is where generic programming comes in. Using the \ty{Data} and \ty{Typeable} type classes, we define a \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}} instance.
-Once defined, implementation of certain metaprogramming features via \emph{direct reflection}~\cite{barzilayphd} becomes very easy. Now implementing quasiquotation is just a matter of adding two lines to the evaluation function:
+Once defined, implementation of certain metaprogramming features via direct reflection becomes very easy. Now implementing quasiquotation is just a matter of adding two lines to the evaluation function:
 % \fn{eval} :: \ty{Exp} -> \ty{Exp}
 % \kw{...}
 \begin{Verbatim}

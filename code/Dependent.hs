@@ -19,8 +19,11 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Dependent where
 
-import Data.Typeable
 import Data.Data
+import Data.Typeable
+
+import Common
+import Test
 
 import qualified Data.Map as M
 import Data.Maybe
@@ -31,11 +34,10 @@ import Control.Monad.State
 
 import Debug.Trace
 
-data Var =
-    Str String
-  | Gensym String Int
-  | Dummy
-  deriving (Show, Eq, Ord, Data, Typeable)
+data Var = Gensym String Int deriving (Show, Eq, Ord, Data, Typeable)
+
+str :: String -> Var
+str s = Gensym s 0
 
 data Definition =
     Axiom Var Ty
@@ -51,26 +53,26 @@ data Exp =
   | Pi Abs
   | Lam Abs
   | App Exp Exp
+  | IntLit Int
+  | StrLit String
   deriving (Show, Eq, Data, Typeable)
 
 type Ty = Exp
 
-data Env = Env { sym :: Int }
+data Env = Env { count :: Int }
 
 type Ctx = M.Map Var (Exp, Maybe Exp)
 
 type TcM m = ExceptT [String] (StateT Env (ReaderT Ctx m))
 
 fresh :: Monad m => Var -> TcM m Var
-fresh Dummy = pure Dummy
-fresh (Gensym x _) = fresh (Str x)
-fresh (Str x) = do
-  ctr <- gets sym
-  modify (\e -> e { sym = ctr + 1})
+fresh (Gensym x _) = do
+  ctr <- gets count
+  modify (\e -> e { count = ctr + 1})
   pure (Gensym x ctr)
 
 fresh' :: Monad m => String -> TcM m Var
-fresh' = fresh . Str
+fresh' = fresh . str
 
 subst' :: Monad m => M.Map Var Exp -> Abs -> TcM m Abs
 subst' ctx (Abs x ty env) = do
@@ -87,22 +89,20 @@ subst ctx =
     App f v -> App <$> subst ctx f <*> subst ctx v
     v@(Var x) -> pure $ M.findWithDefault v x ctx
     u@(Universe _) -> pure u
+    l@(IntLit _) -> pure l
+    l@(StrLit _) -> pure l
 
 substInto :: Monad m => Var -> Exp -> Exp -> TcM m Exp
 substInto v e = subst (M.singleton v e)
 
-lookupType
-  :: Monad m
-  => Var -> TcM m Exp
+lookupType :: Monad m => Var -> TcM m Exp
 lookupType x = do
   res <- asks (fmap fst . M.lookup x)
   case res of
     Just ty -> pure ty
     Nothing -> throwError ["The context contains no binding named " ++ prettyVar x]
 
-lookupValue
-  :: Monad m
-  => Var -> TcM m (Maybe Exp)
+lookupValue :: Monad m => Var -> TcM m (Maybe Exp)
 lookupValue x = do
   res <- asks (fmap snd . M.lookup x)
   case res of
@@ -133,6 +133,8 @@ inferType =
       ty' <- inferType v
       checkEq s ty'
       substInto x v ty
+    IntLit _ -> pure (Var (str "Int"))
+    StrLit _ -> pure (Var (str "String"))
 
 inferUniverse :: Monad m => Exp -> TcM m Int
 inferUniverse exp = do
@@ -169,6 +171,8 @@ normalize =
     u@(Universe _) -> pure u
     Pi a -> Pi <$> normalizeAbs a
     Lam a -> Lam <$> normalizeAbs a
+    IntLit i -> pure (IntLit i)
+    StrLit s -> pure (StrLit s)
 
 normalizeAbs :: Monad m => Abs -> TcM m Abs
 normalizeAbs (Abs x ty exp) = do
@@ -200,7 +204,7 @@ equalInCtx a b = do
       pure $ (ty == ty') && (exp' == exp'')
 
 initialEnv :: Env
-initialEnv = Env {sym = 0}
+initialEnv = Env {count = 0}
 
 initialCtx :: Ctx
 initialCtx = M.fromList []
@@ -239,9 +243,8 @@ ppExp x = do
 
 
 prettyVar :: Var -> String
-prettyVar (Str s)      = s
+prettyVar (Gensym s 0) = s
 prettyVar (Gensym s i) = s ++ show i
-prettyVar Dummy        = "dummy"
 
 pair (Abs v t e) = "(" ++ prettyVar v ++ " : " ++ pretty t ++ ")"
 pair' (v, t) = "(" ++ prettyVar v ++ " : " ++ pretty t ++ ")"
@@ -272,6 +275,42 @@ collectAbstractions e = ([], e)
 
 main :: IO ()
 main = typecheck $ do
-  ppExp (Pi (Abs (Str "a") (Universe 0)
-            (Pi (Abs (Str "x") (Var (Str "a"))
-                (Var (Str "a"))))))
+  ppExp (Pi (Abs (str "a") (Universe 0)
+            (Pi (Abs (str "x") (Var (str "a"))
+                (Var (str "a"))))))
+
+-- The interesting type class
+class Bridge a where
+  ty :: Ty
+  reflect :: a -> Exp
+  reify :: Exp -> Maybe a
+
+instance Bridge String where
+  ty = Var (str "String")
+  reflect s = StrLit s
+  reify (StrLit s) = Just s
+  reify _ = Nothing
+
+instance Bridge Int where
+  ty = Var (str "Int")
+  reflect n = IntLit n
+  reify (IntLit n) = Just n
+  reify _ = Nothing
+
+instance Data a => Bridge a where
+  ty
+    | Just eq <- eqT @a @Int    = Var (str "Int")
+    | Just eq <- eqT @a @String = Var (str "String")
+    | otherwise = undefined
+        where
+          d = mkD @a
+
+  reflect v
+    | Just eq <- eqT @a @Int    = reflect (castWith eq v)
+    | Just eq <- eqT @a @String = reflect (castWith eq v)
+    | otherwise = undefined
+
+  reify e
+    | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reify e)
+    | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reify e)
+    | otherwise = undefined
