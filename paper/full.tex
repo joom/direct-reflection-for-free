@@ -182,6 +182,9 @@ Both implementing a metaprogramming feature in the first place and keeping it up
 
 Once any metaprogramming feature is implemented, every change to the abstract syntax tree (AST) may require that feature to be updated, since it would depend on the shape of the entire AST --- namely quasiquotation~\cite{idrisQuotation} is such a feature.
 For example, the Idris compiler~\cite{idris} suffers from this problem: Its implementation of quotation and unquotation is 1200 lines of Haskell, accompanied by 2500 lines of Idris library code to make that work, and most of this is boilerplate code. In order to solve this problem we will consider ways to augment existing languages with metaprogramming facilities, automatically.
+If you have evaluation, you should be able to evaluate quasiquoted terms for free.
+If you have type-checking, you should be able to type-check quasiquoted terms for free.
+If you have a parser, you should have parser reflection for free.
 
 \section{Background and Related Work}
 
@@ -208,7 +211,7 @@ A paper by \citet{stump2009directly} explains the design decisions behind a
 self-representing and self-evaluating language that is more expressive about
 variable names.  On the implementation side of untyped languages, Lisp's
 quotation mechanism and meta-circular evaluator~\cite{mccarthy1965lisp}
-have inspired to further research on metaprogramming in general.
+have inspired further research on metaprogramming in general.
 
 Research on self-evaluation is not limited to untyped languages, there is a
 long line of work by Brown and
@@ -243,7 +246,7 @@ We define a type class that encapsulates this conversion in both directions:
     \fn{reify} :: \bn{a} -> \ty{Exp}
     \fn{reflect} :: \ty{Exp} -> \ty{Maybe} \bn{a}
 \end{Verbatim}
-Once a \ty{Bridge} instance is defined for a type \bn{a}, we will have a way to \fn{reify} it into a representation in \ty{Exp}. However, if we only have an \ty{Exp}, we can only recover a value of the type \bn{a} if that \ty{Exp} is a valid representation of the value.
+Once a \ty{Bridge} instance is defined for a type \bn{a}, we will have a way to \fn{reify} it into a representation in \ty{Exp}. However, if we only have an \ty{Exp}, we can only recover a value of the type \bn{a} if that \ty{Exp} is a valid representation of some value.
 
 For example, if our language contains a primitive type like strings, we can define an instance to declare how they should be converted back and forth:
 \begin{Verbatim}
@@ -264,7 +267,7 @@ to recover a Haskell string from it.
 
 For a Haskell value $\dt{C}\ \bn{v\_1} \cdots \bn{v\_n}$ of type \ty{T},
 where \dt{C} is the $i$th constructor out of $m$ constructors of \ty{T},
-and \dt{C} has arity $n$, Scott encoding (denoted by $\enco{\ \ }$) of this value will be
+and \dt{C} has arity $n$, the Scott encoding (denoted by $\enco{\ \ }$) of this value will be
 \begin{center}
 $\benco{\dt{C}\ \bn{v\_1} \cdots \bn{v\_n}} = \lambda c_1 \cdots c_m.\ \big(c_i\ \enco{\bn{v\_1}} \cdots \enco{\bn{v\_n}}\big)$
 \end{center}
@@ -321,7 +324,7 @@ Once defined, implementation of certain metaprogramming features via direct refl
 The same pattern of defining a \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}}
 instance with respect to an encoding of choice can be applied to typed
 languages as well.
-For the simplest example of this, we can look at simply-typed \lc\ with binary sums and products, unit and void types, and isorecursive (\textmu) types. The Haskell implementation for this language would need to have two main data types for its AST: \ty{Ty} for types and \ty{Exp} for terms.
+For the simplest example of this, we can look at simply typed \lc\ with binary sums and products, unit and void types, and isorecursive (\textmu) types. The Haskell implementation for this language would need to have two main data types for its AST: \ty{Ty} for types and \ty{Exp} for terms.
 
 \begin{Verbatim}
   \kw{data} \ty{Ty} = \dt{TyString} | \dt{TyInt} | \dt{Arr} \ty{Ty} \ty{Ty} | \dt{TyUnit} | \dt{TyVoid}
@@ -333,15 +336,14 @@ In \ty{Exp}, we introduce \dt{Inl} and \dt{Inr} constructors for the sum type, a
 A recursive type such as {\ty{List Int}} would be encoded as {\texttt{\dt{Mu} \dt{"x"} (\dt{Sum} \dt{TyUnit} (\dt{Pair} \dt{TyInt} (\dt{TyVar} \dt{"x"})))}}, which corresponds to $\mu x. 1 + (\text{Int} \times x)$ in the common theoretical notation.
 
 To implement these encodings for a given Haskell type, we have to augment the \ty{Bridge} type class with a definition, \mbox{\texttt{\fn{ty} : \ty{Ty}}}.
-For this new \ty{Bridge} type class, only the \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}} instance is significantly different compared to the one for the untyped \lc\footnote{The full code is in the repository: \url{http://github.com/joom/direct-reflection-for-free}}. Once that instance is written, implementation of quasiquotation still only the same two lines.
+For this new \ty{Bridge} type class, only the \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}} instance is significantly different compared to the one for the untyped \lc\footnote{The full code is in the repository: \url{http://github.com/joom/direct-reflection-for-free}}. Once that instance is written, the implementation of quasiquotation is still only the same two lines.
 
 \section{Results and Contributions}
 
 The design pattern described in this work allows automatic derivation of metaprogramming features from your language implementation.
-If you have evaluation, you can evaluate quasiquoted terms for free.
-If you have type-checking, you can type-check quasiquoted terms for free.
-If you have a parser, you can have parser reflection for free.
-
+% If you have evaluation, you can evaluate quasiquoted terms for free.
+% If you have type-checking, you can type-check quasiquoted terms for free.
+% If you have a parser, you can have parser reflection for free.
 Our pattern works for both compile-time and run-time metaprogramming features.
 The features above are generative, but they also can be intensional features
 such as inspecting the context and taking apart function and data type
