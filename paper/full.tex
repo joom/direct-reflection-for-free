@@ -164,6 +164,12 @@
 \maketitle
 \thispagestyle{empty}
 
+\vspace{-2em}
+\small{ACM member number: 3665406. Entry for ICFP'19 Student Research
+Competition, Graduate Category.\\Advised by Andrew W. Appel (\href{mailto:appel@cs.princeton.edu}{appel@cs.princeton.edu})}
+\normalsize
+
+
 % \emph{This paper uses colors in the example code.}
 
 \section{Problem and Motivation}
@@ -317,8 +323,8 @@ languages as well.
 For the simplest example of this, we can look at simply-typed \lc\ with binary sums and products, unit and void types, and isorecursive (\textmu) types. The Haskell implementation for this language would need to have two main data types for its AST: \ty{Ty} for types and \ty{Exp} for terms.
 
 \begin{Verbatim}
-\kw{data} \ty{Ty} = \dt{TyString} | \dt{TyInt} | \dt{Arr} \ty{Ty} \ty{Ty} | \dt{TyUnit} | \dt{TyVoid}
-        | \dt{Pair} \ty{Ty} \ty{Ty} | \dt{Sum} \ty{Ty} \ty{Ty} | \dt{Mu} \ty{String} \ty{Ty} | \dt{TyVar} \ty{String}
+  \kw{data} \ty{Ty} = \dt{TyString} | \dt{TyInt} | \dt{Arr} \ty{Ty} \ty{Ty} | \dt{TyUnit} | \dt{TyVoid}
+          | \dt{Pair} \ty{Ty} \ty{Ty} | \dt{Sum} \ty{Ty} \ty{Ty} | \dt{Mu} \ty{String} \ty{Ty} | \dt{TyVar} \ty{String}
 \end{Verbatim}
 
 In \ty{Exp}, we introduce \dt{Inl} and \dt{Inr} constructors for the sum type, and \dt{MkPair} for the product type. Using these types and constructors, we can encode Haskell data types in the sum-of-products style common in generic programming~\cite{magalhaes2010generic}. For example, the \ty{Color} type from before would be encoded in this language as \mbox{\texttt{\dt{Sum} \dt{TyUnit} (\dt{Sum} \dt{TyUnit} \dt{TyUnit})}}, which is exactly $1 + 1 + 1$, in a more common notation in type theory. A value of the type \ty{Color} such as \dt{Red} would be \mbox{\texttt{\dt{Inl} \dt{MkUnit}}}.
@@ -326,11 +332,25 @@ In \ty{Exp}, we introduce \dt{Inl} and \dt{Inr} constructors for the sum type, a
 A recursive type such as {\ty{List Int}} would be encoded as {\texttt{\dt{Mu} \dt{"x"} (\dt{Sum} \dt{TyUnit} (\dt{Pair} \dt{TyInt} (\dt{TyVar} \dt{"x"})))}}, which corresponds to $\mu x. 1 + (\text{Int} \times x)$ in the common theoretical notation.
 
 To implement these encodings for a given Haskell type, we have to augment the \ty{Bridge} type class with a definition, \mbox{\texttt{\fn{ty} : \ty{Ty}}}.
-For this new \ty{Bridge} type class, only the \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}} instance is significantly different compared to the one for the untyped \lc\footnote{The full code is in the repository: \url{http://github.com/joom/direct-reflection-for-free}}. Once that instance is implemented, implementing quasiquotation
+For this new \ty{Bridge} type class, only the \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}} instance is significantly different compared to the one for the untyped \lc\footnote{The full code is in the repository: \url{http://github.com/joom/direct-reflection-for-free}}. Once that instance is written, implementation of quasiquotation still only the same two lines.
 
 \section{Results and Contributions}
 
-\TODO{...}
+The design pattern described in this work allows automatic derivation of metaprogramming features, from your language implementation.
+If you have evaluation, you can evaluate quasiquoted terms for free.
+If you have type-checking, you can type-check quasiquoted terms for free.
+If you have a parser, you can have parser reflection for free.
+
+Our pattern works for both compile-time and run-time metaprogramming features.
+The features above are generative, but they also can be intensional features
+such as inspecting the context and taking apart function and data type
+definitions in and of the object language. This pattern can even be used to
+implement some form of computational
+reflection~\cite{bcSmith,reflectionMasses}, by reifying the context during
+run-time for a new special \textlambda\ form.
+Metaprogramming implementations often require significant boilerplate code, and
+our work attempts to minimize that by using generic programming.
+
 
 
 % \section*{Acknowledgments}
