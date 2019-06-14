@@ -1148,7 +1148,7 @@ Computing Machinery]
   \fi}
 \def\orcid#1{\unskip\ignorespaces}
 \def\authorsaddresses#1{\def\@authorsaddresses{#1}}
-\authorsaddresses{\@mkauthorsaddresses}
+\authorsaddresses{\@mkauthorsaddresses\\ACM member number: 3665406. Entry for ICFP'19 SRC, Graduate Category. Advised by Andrew W. Appel.} %this is a hack!! TODO remove for later iterations
 \def\@titlenotes{}
 \def\titlenote#1{%
   \g@addto@macro\@title{\footnotemark}%

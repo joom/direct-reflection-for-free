@@ -116,6 +116,13 @@
 
 \setenumerate{label=(\arabic*), parsep=0pt}
 
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+
 \begin{document}
 \title{Direct Reflection for Free!}
 \subtitle{}
@@ -165,10 +172,11 @@
 \maketitle
 \thispagestyle{empty}
 
-\vspace{-1.7em}
-\small{ACM member number: 3665406. Entry for ICFP'19 Student Research
-Competition, Graduate Category.\\Advised by Andrew W. Appel (\href{mailto:appel@cs.princeton.edu}{appel@cs.princeton.edu})}
-\normalsize
+% \vspace{-1em}
+% \blfootnote{ACM member number: 3665406. Entry for ICFP'19 Student Research
+% \blfootnote{ACM member number: 3665406. Entry for ICFP'19 SRC, Graduate Category. Advised by Andrew W. Appel.}
+% \blfootnote{ACM member number: 3665406. Entry for ICFP'19 Student Research Competition, Graduate Category.\\ Advised by Andrew W. Appel (\href{mailto:appel@cs.princeton.edu}{appel@cs.princeton.edu})}
+% \normalsize
 
 
 % \emph{This paper uses colors in the example code.}
@@ -178,11 +186,10 @@ Competition, Graduate Category.\\Advised by Andrew W. Appel (\href{mailto:appel@
 Haskell is considered to be one of the best in class for language implementations~\cite{sotu}.
 It has been the metalanguage of choice for production-ready languages such as Elm, PureScript and Idris, proof of concept implementations such as \mbox{Pugs (of Perl 6)}, and many toy languages.
 However, adding a metaprogramming system, even for toy languages, is a cumbersome task that makes maintenance costly.
-Both implementing a metaprogramming feature in the first place and keeping it updated to work with any change to the language or the abstract syntax tree (AST) is costly.
-
-Once any metaprogramming feature is implemented, every change to the abstract syntax tree (AST) may require that feature to be updated, since it would depend on the shape of the entire AST --- namely quasiquotation~\cite{idrisQuotation} is such a feature.
+Both implementing a metaprogramming feature in the first place and keeping it updated to work with any change to the language or the abstract syntax tree (AST) is costly, since that feature would depend on the shape of the entire AST --- namely quasiquotation~\cite{idrisQuotation} is such a feature.
 For example, the Idris compiler~\cite{idris} suffers from this problem: Its implementation of quotation and unquotation is 1200 lines of Haskell, accompanied by 2500 lines of Idris library code to make that work, and most of this is boilerplate code.
-In order to solve this problem we will look for ways to augment existing language implementations with metaprogramming facilities automatically.
+
+In order to solve this problem we look for ways to augment existing language implementations with metaprogramming facilities automatically.
 If you have evaluation, you should be able to evaluate quasiquoted terms for free.
 If you have type-checking, you should be able to type-check quasiquoted terms for free.
 If you have a parser, you should have parser reflection for free.
@@ -194,6 +201,7 @@ Boilerplate~\cite{syb,sybc} style generic programming, which lets users traverse
 abstract data types with less boilerplate code.
 In modern Haskell, this style is embodied by the \ty{Data} and \ty{Typeable}
 type classes, which can be derived automatically.
+These type classes allow representation of types as run-time values, and inspection of constructors and constructor fields.
 We leverage this mechanism to achieve our goal.
 
 There is little work on adding metaprogramming facilities automatically to an existing language.
