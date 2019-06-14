@@ -165,7 +165,7 @@
 \maketitle
 \thispagestyle{empty}
 
-\vspace{-2em}
+\vspace{-1.7em}
 \small{ACM member number: 3665406. Entry for ICFP'19 Student Research
 Competition, Graduate Category.\\Advised by Andrew W. Appel (\href{mailto:appel@cs.princeton.edu}{appel@cs.princeton.edu})}
 \normalsize
@@ -181,7 +181,8 @@ However, adding a metaprogramming system, even for toy languages, is a cumbersom
 Both implementing a metaprogramming feature in the first place and keeping it updated to work with any change to the language or the abstract syntax tree (AST) is costly.
 
 Once any metaprogramming feature is implemented, every change to the abstract syntax tree (AST) may require that feature to be updated, since it would depend on the shape of the entire AST --- namely quasiquotation~\cite{idrisQuotation} is such a feature.
-For example, the Idris compiler~\cite{idris} suffers from this problem: Its implementation of quotation and unquotation is 1200 lines of Haskell, accompanied by 2500 lines of Idris library code to make that work, and most of this is boilerplate code. In order to solve this problem we will consider ways to augment existing languages with metaprogramming facilities, automatically.
+For example, the Idris compiler~\cite{idris} suffers from this problem: Its implementation of quotation and unquotation is 1200 lines of Haskell, accompanied by 2500 lines of Idris library code to make that work, and most of this is boilerplate code.
+In order to solve this problem we will look for ways to augment existing language implementations with metaprogramming facilities automatically.
 If you have evaluation, you should be able to evaluate quasiquoted terms for free.
 If you have type-checking, you should be able to type-check quasiquoted terms for free.
 If you have a parser, you should have parser reflection for free.
@@ -189,7 +190,7 @@ If you have a parser, you should have parser reflection for free.
 \section{Background and Related Work}
 
 For almost two decades, Haskell has been equipped with the Scrap Your
-Boilerplate~\cite{syb,sybc} style of generic programming, which lets users traverse
+Boilerplate~\cite{syb,sybc} style generic programming, which lets users traverse
 abstract data types with less boilerplate code.
 In modern Haskell, this style is embodied by the \ty{Data} and \ty{Typeable}
 type classes, which can be derived automatically.
@@ -219,7 +220,7 @@ Palsberg~\cite{brownU,brownBreaking,brownIntensional} that defines encodings
 for languages like System U and System $\text{F}_\omega$.
 However, encoding a language in itself does not need to self-evaluate.
 Template Haskell~\cite{sheard2002template} is an example of a compile-time
-metaprogramming system, where Haskell is represented in Haskell itself.
+metaprogramming system, where Haskell is represented in itself.
 The pattern we describe in this work can be used with any of these encodings.
 
 % Encoding a language in itself is a popular area of research:
