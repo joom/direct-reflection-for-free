@@ -282,20 +282,20 @@ main = typecheck $ do
 -- The interesting type class
 class Bridge a where
   ty :: Ty
-  reflect :: a -> Exp
-  reify :: Exp -> Maybe a
+  reify :: a -> Exp
+  reflect :: Exp -> Maybe a
 
 instance Bridge String where
   ty = Var (str "String")
-  reflect s = StrLit s
-  reify (StrLit s) = Just s
-  reify _ = Nothing
+  reify s = StrLit s
+  reflect (StrLit s) = Just s
+  reflect _ = Nothing
 
 instance Bridge Int where
   ty = Var (str "Int")
-  reflect n = IntLit n
-  reify (IntLit n) = Just n
-  reify _ = Nothing
+  reify n = IntLit n
+  reflect (IntLit n) = Just n
+  reflect _ = Nothing
 
 instance Data a => Bridge a where
   ty
@@ -305,12 +305,12 @@ instance Data a => Bridge a where
         where
           d = mkD @a
 
-  reflect v
-    | Just eq <- eqT @a @Int    = reflect (castWith eq v)
-    | Just eq <- eqT @a @String = reflect (castWith eq v)
+  reify v
+    | Just eq <- eqT @a @Int    = reify (castWith eq v)
+    | Just eq <- eqT @a @String = reify (castWith eq v)
     | otherwise = undefined
 
-  reify e
-    | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reify e)
-    | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reify e)
+  reflect e
+    | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reflect e)
+    | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reflect e)
     | otherwise = undefined

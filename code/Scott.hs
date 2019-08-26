@@ -98,12 +98,12 @@ eval' env (App e1 e2)
   | eval' env e1 == e1 && eval' env e2 == e2 = App e1 e2
   | otherwise = eval' env (App (eval' env e1) (eval' env e2))
 eval' env (Abs x body) = Abs x $ eval' (M.insert x (Var x) env) body
-eval' env (Quasiquote e) = reflect e
-eval' env (Antiquote e) = fromJust (reify (eval e))
+eval' env (Quasiquote e) = reify e
+eval' env (Antiquote e) = fromJust (reflect (eval e))
 eval' env (Parse e) = let StrLit s = eval e in
                       case parseExp s of
                         Left err -> error $ show err
-                        Right e' -> reflect e'
+                        Right e' -> reify e'
 eval' env (Pretty e) = StrLit $ pretty e
 eval' env e = e
 
@@ -127,38 +127,38 @@ constrToScott c = (ctorArgs, ctorArgs !! (constrIndex c - 1))
     -- ^ arg names representing each ctor
 -- The interesting type class
 class Bridge a where
-  reflect :: a -> Exp
-  reify :: Exp -> Maybe a
+  reify :: a -> Exp
+  reflect :: Exp -> Maybe a
 
 instance Bridge String where
-  reflect s = StrLit s
-  reify (StrLit s) = Just s
-  reify _ = Nothing
+  reify s = StrLit s
+  reflect (StrLit s) = Just s
+  reflect _ = Nothing
 
 instance Bridge Int where
-  reflect n = IntLit n
-  reify (IntLit n) = Just n
-  reify _ = Nothing
+  reify n = IntLit n
+  reflect (IntLit n) = Just n
+  reflect _ = Nothing
 
 -- instance (Bridge a, Bridge b) => Bridge (a -> b) where
---   reflect f = Abs "x" (App undefined (Var "x"))
---   reify (Abs x e) = undefined
---   reify _ = Nothing
+--   reify f = Abs "x" (App undefined (Var "x"))
+--   reflect (Abs x e) = undefined
+--   reflect _ = Nothing
 
 instance Data a => Bridge a where
-  reflect v
-    | Just eq <- eqT @a @Int    = reflect (castWith eq v)
-    | Just eq <- eqT @a @String = reflect (castWith eq v)
+  reify v
+    | Just eq <- eqT @a @Int    = reify (castWith eq v)
+    | Just eq <- eqT @a @String = reify (castWith eq v)
     | otherwise =
-        lams args (apps (Var c : gmapQ reflectArg v))
+        lams args (apps (Var c : gmapQ reifyArg v))
     where
       (args, c) = constrToScott @a (toConstr v)
-      reflectArg :: forall d. Data d => d -> Exp
-      reflectArg x = reflect @d x
+      reifyArg :: forall d. Data d => d -> Exp
+      reifyArg x = reify @d x
 
-  reify e
-    | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reify e)
-    | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reify e)
+  reflect e
+    | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reflect e)
+    | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reflect e)
     | otherwise =
       case collectAbs e of -- dissect the nested lambdas
         ([], _) -> Nothing
@@ -167,19 +167,19 @@ instance Data a => Bridge a where
             (Var c, rest) -> do
                 let ctors = getConstrs @a
                 ctor <- lookup c (zip args ctors)
-                evalStateT (fromConstrM reifyArg ctor) rest
+                evalStateT (fromConstrM reflectArg ctor) rest
             _ -> Nothing
     where
-      reifyArg :: forall d. Data d => StateT [Exp] Maybe d
-      reifyArg = do e <- gets head
-                    modify tail
-                    lift (reify @d e)
+      reflectArg :: forall d. Data d => StateT [Exp] Maybe d
+      reflectArg = do e <- gets head
+                      modify tail
+                      lift (reflect @d e)
 
 roundTrip :: forall a. Data a => a -> Maybe a
-roundTrip x = reify @a ((reflect @a x))
+roundTrip x = reflect @a ((reify @a x))
 
-reflectIO :: forall a. Data a => a -> IO ()
-reflectIO x = putStrLn $ pretty $ reflect @a x
+reifyIO :: forall a. Data a => a -> IO ()
+reifyIO x = putStrLn $ pretty $ reify @a x
 
 -- | Very rudimentary REPL, ideally we'd like to use repline or haskeline
 -- but I wanted to make the module self-contained.

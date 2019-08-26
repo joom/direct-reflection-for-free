@@ -1,10 +1,10 @@
 {-|
-The goal is to get a mechanism like elaborator reflection for free,
+The goal is to get a mechanism like elaborator reifyion for free,
 using Haskell's generics.
 
-In a few languages implemented in Haskell, there's a mechanism for reflecting
+In a few languages implemented in Haskell, there's a mechanism for reifying
 the terms in the object language (whatever language is being implemented) to
-terms in the meta language (in this case, Haskell), and for reify terms in the meta language to the object language.
+terms in the meta language (in this case, Haskell), and for reflect terms in the meta language to the object language.
 Idris does this to simplify the implementation of its metaprogramming facilities. Dhall does this for evaluation of Dhall terms.
 -}
 {-# LANGUAGE AllowAmbiguousTypes #-}
@@ -172,8 +172,8 @@ eval' env (App e1 e2)
   | eval' env e1 == e1 && eval' env e2 == e2 = App e1 e2
   | otherwise = eval' env (App (eval' env e1) (eval' env e2))
 eval' env (Abs (x, ty) body) = Abs (x, ty) $ eval' (M.insert x (Var x) env) body
--- eval' env (Quasiquote e) = reflect e
--- eval' env (Antiquote e) = fromJust (reify (eval e))
+-- eval' env (Quasiquote e) = reify e
+-- eval' env (Antiquote e) = fromJust (reflect (eval e))
 -- eval' env (Parse e) = let StrLit s = eval e in
 --                       case parseExp s of
 --                         Left err -> error $ show err
@@ -244,20 +244,20 @@ spineView e = (e, [])
 -- The interesting type class
 class Bridge a where
   ty :: Ty
-  reflect :: a -> Exp
-  reify :: Exp -> Maybe a
+  reify :: a -> Exp
+  reflect :: Exp -> Maybe a
 
 instance Bridge String where
   ty = TyString
-  reflect s = StrLit s
-  reify (StrLit s) = Just s
-  reify _ = Nothing
+  reify s = StrLit s
+  reflect (StrLit s) = Just s
+  reflect _ = Nothing
 
 instance Bridge Int where
   ty = TyInt
-  reflect n = IntLit n
-  reify (IntLit n) = Just n
-  reify _ = Nothing
+  reify n = IntLit n
+  reflect (IntLit n) = Just n
+  reflect _ = Nothing
 
 dTy :: D -> Ty
 dTy (D (x :: a)) = ty @a
@@ -277,13 +277,13 @@ instance Data a => Bridge a where
           dTy' a = if a `elem` rec then TyVar (show a) else dTy a
           argsTy = map (foldr1def Pair TyUnit . map dTy') (allConstrArgs d)
 
-  reflect v
-    | Just eq <- eqT @a @Int    = reflect (castWith eq v)
-    | Just eq <- eqT @a @String = reflect (castWith eq v)
+  reify v
+    | Just eq <- eqT @a @Int    = reify (castWith eq v)
+    | Just eq <- eqT @a @String = reify (castWith eq v)
     | otherwise = folds $
       case getConstrs @a of
         [] -> error $ "You can't have a value of the type " ++ show (mkD @a) ++ " since it has no constructors"
-        _ -> sums (getConstrs @a) (foldr1def MkPair MkUnit (gmapQ reflectArg v))
+        _ -> sums (getConstrs @a) (foldr1def MkPair MkUnit (gmapQ reifyArg v))
       where
         rec = nub (concat (recD (mkD @a)))
         folds e = iterate Fold e !! length rec
@@ -296,16 +296,16 @@ instance Data a => Bridge a where
         sums (x:xs) e | x == toConstr v = Inl e undefined
                       | otherwise = Inr (sums xs e) undefined
 
-        reflectArg :: forall d. Data d => d -> Exp
-        reflectArg x = reflect @d x
+        reifyArg :: forall d. Data d => d -> Exp
+        reifyArg x = reify @d x
 
-  reify e
-    | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reify e)
-    | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reify e)
+  reflect e
+    | Just eq <- eqT @a @Int    = castWith (cong (sym eq)) (reflect e)
+    | Just eq <- eqT @a @String = castWith (cong (sym eq)) (reflect e)
     | otherwise =
         if length rec /= numFolds then Nothing else
         if iSum >= length ctors then Nothing else
-        evalStateT (fromConstrM reifyArg ctor) rest
+        evalStateT (fromConstrM reflectArg ctor) rest
       where
         rec = nub (concat (recD (mkD @a)))
 
@@ -334,13 +334,13 @@ instance Data a => Bridge a where
 
         rest = collectFromPair 0 e''
 
-        reifyArg :: forall d. Data d => StateT [Exp] Maybe d
-        reifyArg = do e <- gets head
-                      modify tail
-                      lift (reify @d e)
+        reflectArg :: forall d. Data d => StateT [Exp] Maybe d
+        reflectArg = do e <- gets head
+                        modify tail
+                        lift (reflect @d e)
 
 roundTrip :: forall a. Data a => a -> Maybe a
-roundTrip x = reify @a ((reflect @a x))
+roundTrip x = reflect @a ((reify @a x))
 
-reflectIO :: forall a. Data a => a -> IO ()
-reflectIO x = putStrLn $ pretty $ reflect @a x
+reifyIO :: forall a. Data a => a -> IO ()
+reifyIO x = putStrLn $ pretty $ reify @a x
