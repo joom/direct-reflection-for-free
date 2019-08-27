@@ -61,13 +61,8 @@ class Abs extends Exp {
   show () { return `(λ ${this.v}. ${this.e.show()})` }
 }
 
-var descExp = new Map()
-descExp.set(Var,    [{field: "v",  type: String}])
-descExp.set(StrLit, [{field: "s",  type: String}])
-descExp.set(App,    [{field: "e1", type: Exp},    {field: "e2", type: Exp}])
-descExp.set(Abs,    [{field: "v",  type: String}, {field: "e", type: Exp}])
-
 const lams = (xs, e) => xs.reduceRight((acc, v) => new Abs(v, acc), e)
+
 const apps = xs => xs.reduce((e1, e2) => new App(e1, e2))
 
 const names = n => {
@@ -96,11 +91,17 @@ const spineView = e => {
   return {head: e, rest: xs}
 }
 
+var descExp = new Map()
+descExp.set(Var,    [{field: "v",  type: String}])
+descExp.set(StrLit, [{field: "s",  type: String}])
+descExp.set(App,    [{field: "e1", type: Exp},    {field: "e2", type: Exp}])
+descExp.set(Abs,    [{field: "v",  type: String}, {field: "e",  type: Exp}])
+
 // Scott encoding for any given type's description
 const bridgeFromDesc = desc =>
   ({reify: x => {
       let cs = names(desc.size)
-      let c = cs[Array.from(desc.keys()).findIndex(e => e == x.constructor)]
+      let c = cs[Array.from(desc.keys()).indexOf(x.constructor)]
       var args = desc.get(x.constructor)
                    .map(o => descLookup.get(o.type).reify(x[o.field]))
       args.unshift(new Var(c))
