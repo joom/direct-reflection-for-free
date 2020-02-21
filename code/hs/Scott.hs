@@ -15,11 +15,15 @@ import Data.Maybe
 import Control.Monad.State.Strict
 import Text.Parsec.String
 import Text.Parsec
+import System.Console.Haskeline
 
 import Common
 
 import Data.Typeable
 import Data.Data
+
+data Op = Plus | Minus | Times | Div | Concat
+  deriving (Show, Eq, Ord, Data, Typeable)
 
 -- Lambda calculus
 data Exp =
@@ -34,6 +38,7 @@ data Exp =
   | Eval Exp         -- [|e|], where e is an AST in Scott encoding, returns AST
   | Parse Exp        -- {e}, where e is a string expression, returns AST
   | Pretty Exp       -- [e], where e is an AST in Scott encoding, returns a string
+  | Prim Op
   deriving (Show, Eq, Ord, Data, Typeable)
 
 parseExp :: String -> Either ParseError Exp
@@ -63,10 +68,15 @@ parseExp input = parse exp "λ−calculus" input
     character = fmap return nonEscape <|> escape
     parseString = char '"' *> (StrLit . concat <$> many character) <* char '"'
     parseInt = IntLit . read <$> many1 (digit :: Parser Char)
+    parseOp = (string "+" *> return Plus)
+          <|> (string "-" *> return Minus)
+          <|> (string "*" *> return Times)
+          <|> (string "/" *> return Div)
+          <|> (string "^" *> return Concat)
     nonApp = try parseUnit <|> parens exp
             <|> parseString <|> parseInt
             <|> quote exp <|> antiquote exp <|> evalBr exp <|> parseBr exp <|> prettyBr exp
-            <|> parseAbs <|> parseVar
+            <|> parseAbs <|> parseVar <|> (Prim <$> parseOp)
     exp = chainl1 (lexeme nonApp) $ return App
 
 pretty :: Exp -> String
@@ -82,6 +92,12 @@ pretty (IntLit i) = show i
 pretty MkUnit = "()"
 pretty (Quasiquote e) = "`(" ++ pretty e ++ ")"
 pretty (Antiquote e) = "~(" ++ pretty e ++ ")"
+pretty (Prim op) = case op of
+                     Plus -> "+"
+                     Minus -> "-"
+                     Times -> "*"
+                     Div -> "/"
+                     Concat -> "^"
 
 lams :: [String] -> Exp -> Exp
 lams xs e = foldr Abs e xs
@@ -91,13 +107,24 @@ apps = foldl1 App
 
 type Ctx = M.Map String Exp
 
+-- TODO fix variable capture and evaluation under lambda
+-- evaluation under lambda should be reconsidered for compile-time evaluation of quotes
 eval' :: M.Map String Exp -> Exp -> Exp
 eval' env e@(Var x) = fromMaybe e (M.lookup x env)
+eval' env (App (App eop@(Prim op) e1) e2) =
+  case (eval' env e1, eval' env e2) of
+    (IntLit i1, IntLit i2) | Just f <- lookup op [ (Plus, (+))
+                                                 , (Minus, (-))
+                                                 , (Times, (*))
+                                                 , (Div, div) ] -> IntLit (f i1 i2)
+    (StrLit s1, StrLit s2) | op == Concat -> StrLit (s1 ++ s2)
+    (e1', e2') -> (App (App eop e1') e2')
 eval' env (App (Abs x body) e) = eval' (M.insert x (eval' env e) env) body
 eval' env (App e1 e2)
   | eval' env e1 == e1 && eval' env e2 == e2 = App e1 e2
   | otherwise = eval' env (App (eval' env e1) (eval' env e2))
-eval' env (Abs x body) = Abs x $ eval' (M.insert x (Var x) env) body
+eval' env e@(Abs x body) = e
+-- eval' env (Abs x body) = Abs x $ eval' (M.insert x (Var x) env) body
 eval' env (Quasiquote e) = reify e
 eval' env (Antiquote e) = fromJust (reflect (eval e))
 eval' env (Parse e) = let StrLit s = eval e in
@@ -181,19 +208,52 @@ roundTrip x = reflect @a ((reify @a x))
 reifyIO :: forall a. Data a => a -> IO ()
 reifyIO x = putStrLn $ pretty $ reify @a x
 
--- | Very rudimentary REPL, ideally we'd like to use repline or haskeline
--- but I wanted to make the module self-contained.
 repl :: IO ()
-repl = do
-  putStr ">> "
-  x <- getLine
-  case parseExp x of
-    Left err -> putStr "ERROR: " >> print err
-    Right exp -> putStrLn (pretty $ eval exp)
-  repl
+repl = runInputT defaultSettings loop
+  where
+    loop = do
+      x <- getInputLine ">> "
+      case parseExp <$> x of
+        Nothing -> loop
+        Just (Left err) -> liftIO (putStr "ERROR" >> print err) >> loop
+        Just (Right exp) -> (liftIO . putStrLn . pretty . eval $ exp) >> loop
 
 main :: IO ()
 main = repl
+
+{-
+
+Example programs:
+
+~((\x. x) `( () ))
+
+We quote the unit expression, get a reified representation of the unit term,
+apply that to the identity function, get the same thing back,
+and then splice it back.
+
+~((\x y. x) `(1) `(0))
+
+We quote both 1 and 0. We also have a Scott encoding of the boolean term true.
+This term is its own eliminator. In other words, it's an if expression.
+If the boolean is true, we get the quoted 1, if it's false we get the quoted 0.
+Then we splice it back, which gives us the numeral 1. The boolean was true after all.
+
+These are all generative examples. Let's do one that is intentional. (inspecting terms)
+
+(\t. t (\x. 1) (\e1 e2. 2) (\x e. 2) (\s. 1) (\i. 1) 0 (\e. 1) (\e. 1) (\e. 1) (\e. 1) (\e. 1) (\op. 1)) `(f x)
+
+This program consists of two parts, a function and the quoted term 'f x'.
+The function takes a reified AST, and returns however many arguments
+are needed at the top level for that AST node.
+
+(\f. (\z. f (z z)) (\z. f (z z)))
+  (\size t. t (\x. 1) (\e1 e2. + (size e1) (size e2)) (\x e. size e) (\s. 1) (\i. 1) 0 (\e. size e) (\e. size e) (\e. size e) (\e. size e) (\e. size e) (\op. 1)) `(f x)
+
+(\f. (\z. f (z z)) (\z. f (z z))) (\size t. t (\x. 1) (\e1 e2. + 1 (+ (size e1) (size e2))) (\x e. + 1 (size e)) (\s. 1) (\i. 1) 0 (\e. + 1 (size e)) (\e. + 1 (size e)) (\e. + 1 (size e)) (\e. + 1 (size e)) (\e. + 1 (size e)) (\op. 1)) `(f x)
+
+
+
+-}
 
 -- Takes a Scott encoding of lambda terms and changes it into their Mogensen encoding
 -- toMogensen :: Exp -> Exp

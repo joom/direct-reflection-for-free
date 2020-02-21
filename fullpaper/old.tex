@@ -1,0 +1,192 @@
+
+
+
+
+Haskell is considered to be one of the best in class for language implementations~\cite{sotu}.
+It has been the metalanguage of choice for production-ready languages such as Elm, PureScript and Idris, proof of concept implementations such as \mbox{Pugs (of Perl 6)}, and many toy languages.
+However, adding a metaprogramming system, even for toy languages, is a cumbersome task that makes maintenance costly.
+Both implementing a metaprogramming feature in the first place and keeping it updated to work with any change to the language or the abstract syntax tree (AST) is costly, since that feature would depend on the shape of the entire AST --- namely quasiquotation~\cite{idrisQuotation} is such a feature.
+For example, the Idris compiler~\cite{idris} suffers from this problem: Its implementation of quotation and unquotation is 1200 lines of Haskell, accompanied by 2500 lines of Idris library code to make that work, and most of this is boilerplate code.
+
+In order to solve this problem we look for ways to augment existing language implementations with metaprogramming facilities automatically.
+If you have evaluation, you should be able to evaluate quasiquoted terms for free.
+If you have type-checking, you should be able to type-check quasiquoted terms for free.
+If you have a parser, you should have parser reflection for free.
+
+\section{Background and Related Work}
+
+For almost two decades, Haskell has been equipped with the Scrap Your
+Boilerplate~\cite{syb,sybc} style generic programming, which lets users traverse
+abstract data types with less boilerplate code.
+In modern Haskell, this style is embodied by the \ty{Data} and \ty{Typeable}
+type classes, which can be derived automatically.
+These type classes allow representation of types as run-time values, and inspection of constructors and constructor fields.
+We leverage this mechanism to achieve our goal.
+
+There is little work on adding metaprogramming facilities automatically to an existing language.
+\citet{hgmp} describe a calculus that models both compile-time and run-time homogeneous generative metaprogramming, and give a recipe for adding metaprogramming to any language.
+Their recipe involves creating a new syntactic form for AST terms, while we
+will take a different approach in this work.
+We encode ASTs of a language in the same language instead.
+Furthermore, not all metaprogramming is generative, hence we find a method that enables metaprogramming methods that involve breaking down existing data type and function definitions.
+
+Encoding ASTs in the same language is a well known concept.
+Especially research in self-evaluation has generated ways to represent many
+languages in themselves.  The Mogensen encoding~\cite{mogensen} is an encoding
+of untyped \lc\ in itself; it combines the Scott encoding~\cite{scott} with
+higher-order abstract syntax~\cite{hoas}.
+A paper by \citet{stump2009directly} explains the design decisions behind a
+self-representing and self-evaluating language that is more expressive about
+variable names.  On the implementation side of untyped languages, Lisp's
+quotation mechanism and meta-circular evaluator~\cite{mccarthy1965lisp}
+have inspired further research on metaprogramming in general.
+
+Research on self-evaluation is not limited to untyped languages, there is a
+long line of work by Brown and
+Palsberg~\cite{brownU,brownBreaking,brownIntensional} that defines encodings
+for languages like System U and System $\text{F}_\omega$.
+However, encoding a language in itself does not need to self-evaluate.
+Template Haskell~\cite{sheard2002template} is an example of a compile-time
+metaprogramming system, where Haskell is represented in itself.
+The pattern we describe in this work can be used with any of these encodings.
+
+% Encoding a language in itself is a popular area of research:
+% \cite{devriese2013typed} encode Agda in Agda.
+
+\section{Approach and Uniqueness}
+
+In this work, we will present a pattern that takes advantage of generic programming
+when we implement toy programming languages in Haskell and decide to add
+metaprogramming features. We will show that this pattern
+can be used to convert any Haskell type (with an instance of the type classes
+above), back and forth with our all-time favorite toy language: \lc.
+We \mbox{\emph{reify}} Haskell values into their Scott encodings~\cite{scott}
+in the \lc\ AST, and \mbox{\emph{reflect}} them back to Haskell values.
+This conversion can then be used to add metaprogramming features to the languages we implement in Haskell, via
+  \emph{direct reflection}, a technique that makes the language implementation
+  in the metalanguage a part of the object language's semantics~\cite{barzilayphd}.
+
+Our goal is to capture the representation of object language syntax trees within the same object language. Initially, it helps to generalize this into the conversion of any metalanguage value into its encoding
+in the object language, whose AST is represented by the data type \ty{Exp}.
+We define a type class that encapsulates this conversion in both directions:
+\begin{Verbatim}
+  \kw{class} \ty{Bridge} \bn{a} \kw{where}
+    \fn{reify} :: \bn{a} -> \ty{Exp}
+    \fn{reflect} :: \ty{Exp} -> \ty{Maybe} \bn{a}
+\end{Verbatim}
+Once a \ty{Bridge} instance is defined for a type \bn{a}, we will have a way to \fn{reify} it into a representation in \ty{Exp}. However, if we only have an \ty{Exp}, we can only recover a value of the type \bn{a} if that \ty{Exp} is a valid representation of some value.
+
+For example, if our language contains a primitive type like strings, we can define an instance to declare how they should be converted back and forth:
+\begin{Verbatim}
+  \kw{instance} \ty{Bridge} \ty{String} \kw{where}
+    \fn{reify} \bn{s} = \dt{StrLit} \bn{s}
+    \fn{reflect} (\dt{StrLit} \bn{s}) = \dt{Just} \bn{s}
+    \fn{reflect} _ = \dt{Nothing}
+\end{Verbatim}
+The \fn{reflect} function above states that if an expression is not a string
+literal, represented above with the constructor \dt{StrLit}, it is not possible
+to recover a Haskell string from it.
+
+\subsection{\Lc\ and Scott encoding}
+
+\newcommand{\enco}[1]{\lceil #1 \rceil}
+\newcommand{\benco}[1]{\big\lceil #1 \big\rceil}
+
+
+For a Haskell value $\dt{C}\ \bn{v\_1} \cdots \bn{v\_n}$ of type \ty{T},
+where \dt{C} is the $i$th constructor out of $m$ constructors of \ty{T},
+and \dt{C} has arity $n$, the Scott encoding (denoted by $\enco{\ \ }$) of this value will be
+\begin{center}
+$\benco{\dt{C}\ \bn{v\_1} \cdots \bn{v\_n}} = \lambda c_1 \cdots c_m.\ \big(c_i\ \enco{\bn{v\_1}} \cdots \enco{\bn{v\_n}}\big)$
+\end{center}
+
+For a Haskell data type \kw{data} \ty{Color} = \dt{Red} | \dt{Green},
+Scott \mbox{encodings} of the constructors will be
+
+\begin{center}
+\begin{tabular}{c c c}
+  $\enco{\dt{Red}} = \lambda c_1\ c_2.\ c_1$ & \ \ \ \ &
+    $\enco{\dt{Green}} = \lambda c_1\ c_2.\ c_2$
+\end{tabular}
+\end{center}
+
+If we decide to add a new constructor \dt{Blue} to the \ty{Color} data type, we must update each of the Scott encodings above accordingly, so that we have:
+\begin{center}
+\begin{tabular}{c c}
+  $\enco{\dt{Red}} = \lambda c_1\ c_2\ c_3.\ c_1$ &
+    $\enco{\dt{Green}} = \lambda c_1\ c_2\ c_3.\ c_2$
+\end{tabular}
+\begin{tabular}{c}
+    $\enco{\dt{Blue}} = \lambda c_1\ c_2\ c_3.\ c_3$
+\end{tabular}
+\end{center}
+
+When we implement \lc\ in Haskell, we start by defining a data type for our AST, using Haskell strings for names:
+\begin{Verbatim}
+  \kw{data} \ty{Exp} = \dt{Var} \ty{String} | \dt{App} \ty{Exp} \ty{Exp} | \dt{Abs} \ty{String} \ty{Exp}
+\end{Verbatim}
+For metaprogramming, we need a representation of \lc\ terms within \lc, and a \ty{Bridge} instance for \ty{Exp} would achieve exactly that; it would give us an easy way to convert between the signified (ones we want to reify) and signifier terms (ones that are the result of reifying).
+
+However, as we develop the language, we often need to add new constructors to the AST.
+If we define a \ty{Bridge} instance now, and add more constructors to \ty{Exp}, then the previous \ty{Bridge} instance becomes obsolete.
+Suppose we want to add string literal, quasiquote and antiquote expressions:
+\begin{Verbatim}
+  \kw{data} \ty{Exp} = \dt{Var} \ty{String} | \dt{App} \ty{Exp} \ty{Exp} | \dt{Abs} \ty{String} \ty{Exp}
+           | \dt{StrLit} \ty{String} | \dt{Quasiquote} \ty{Exp} | \dt{Antiquote} \ty{Exp}
+\end{Verbatim}
+How do we make sure that the \ty{Bridge} instance does not become obsolete?
+The answer is to avoid defining a special \ty{Bridge} instance for the \ty{Exp} type.
+Ideally, we would like to have one \emph{for free}, based on a different type class. This is where generic programming comes in. Using the \ty{Data} and \ty{Typeable} type classes, we define a \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}} instance.
+Once defined, implementation of certain metaprogramming features via direct reflection becomes very easy. Now implementing quasiquotation is just a matter of adding two lines to the evaluation function:
+% \fn{eval} :: \ty{Exp} -> \ty{Exp}
+% \kw{...}
+\begin{Verbatim}
+  \fn{eval} (\dt{Quasiquote} \bn{e}) = \fn{reify} \bn{e}
+  \fn{eval} (\dt{Antiquote} \bn{e}) = \kw{let} \dt{Just} \bn{e'} = \fn{reflect} (\fn{eval} e) \kw{in} \bn{e'}
+\end{Verbatim}
+
+% In my talk, we will describe this pattern and show its applications in typed languages such as simply-typed \lc\ with \textmu-types and the calculus of constructions, to implement more complex metaprogramming features.
+
+\subsection{Typed \lc\ and the sum-of-products encoding}
+
+The same pattern of defining a \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}}
+instance with respect to an encoding of choice can be applied to typed
+languages as well.
+For the simplest example of this, we can look at simply typed \lc\ with binary sums and products, unit and void types, and isorecursive (\textmu) types. The Haskell implementation for this language would need to have two main data types for its AST: \ty{Ty} for types and \ty{Exp} for terms.
+
+\begin{Verbatim}
+  \kw{data} \ty{Ty} = \dt{TyString} | \dt{TyInt} | \dt{Arr} \ty{Ty} \ty{Ty} | \dt{TyUnit} | \dt{TyVoid}
+          | \dt{Pair} \ty{Ty} \ty{Ty} | \dt{Sum} \ty{Ty} \ty{Ty} | \dt{Mu} \ty{String} \ty{Ty} | \dt{TyVar} \ty{String}
+\end{Verbatim}
+
+In \ty{Exp}, we introduce \dt{Inl} and \dt{Inr} constructors for the sum type, and \dt{MkPair} for the product type. Using these types and constructors, we can encode Haskell data types in the sum-of-products style common in generic programming~\cite{magalhaes2010generic}. For example, the \ty{Color} type from before would be encoded in this language as \mbox{\texttt{\dt{Sum} \dt{TyUnit} (\dt{Sum} \dt{TyUnit} \dt{TyUnit})}}, which is exactly $1 + 1 + 1$, in a more common notation in type theory. A value of the type \ty{Color} such as \dt{Red} would be \mbox{\texttt{\dt{Inl} \dt{MkUnit}}}.
+
+A recursive type such as {\ty{List Int}} would be encoded as {\texttt{\dt{Mu} \dt{"x"} (\dt{Sum} \dt{TyUnit} (\dt{Pair} \dt{TyInt} (\dt{TyVar} \dt{"x"})))}}, which corresponds to $\mu x. 1 + (\text{Int} \times x)$ in the common theoretical notation.
+
+To implement these encodings for a given Haskell type, we have to augment the \ty{Bridge} type class with a definition, \mbox{\texttt{\fn{ty} : \ty{Ty}}}.
+For this new \ty{Bridge} type class, only the \mbox{\ty{Data} \bn{a} => \ty{Bridge} \bn{a}} instance is significantly different compared to the one for the untyped \lc\footnote{The full code is in the repository: \url{http://github.com/joom/direct-reflection-for-free}}. Once that instance is written, the implementation of quasiquotation is still only the same two lines.
+
+\section{Results and Contributions}
+
+The design pattern described in this work allows automatic derivation of metaprogramming features from your language implementation.
+% If you have evaluation, you can evaluate quasiquoted terms for free.
+% If you have type-checking, you can type-check quasiquoted terms for free.
+% If you have a parser, you can have parser reflection for free.
+Our pattern works for both compile-time and run-time metaprogramming features.
+The features above are generative, but they also can be intensional features
+such as inspecting the context and taking apart function and data type
+definitions in and of the object language. This pattern can even be used to
+implement some form of computational
+reflection~\cite{bcSmith,reflectionMasses}, by reifying the context during
+run-time for a new special \textlambda\ form.
+Metaprogramming implementations often require significant boilerplate code, and
+our work attempts to minimize that by using generic programming.
+
+
+
+% \section*{Acknowledgments}
+% We would like to thank Matt Chan and Gabriel Gonzalez for inspiring the idea of
+% a bridge between the meta language and the object language.
+% We would also like to thank Charlie Murphy for his help with the draft.
+% \vspace{0.5em}
+

@@ -66,9 +66,13 @@ data Exp =
   | Unfold Exp
   | StrLit String
   | IntLit Int
-  | Inl Exp Ty
-  | Inr Exp Ty
+  -- | FractionLit Int Int
+  | Inl Exp
+  | Inr Exp
+  | Case Exp Exp Exp
   | MkPair Exp Exp
+  | Fst Exp
+  | Snd Exp
   | MkUnit
   | Let Stmt Exp
   -- | Quasiquote Exp
@@ -78,7 +82,7 @@ data Exp =
   deriving (Show, Eq, Ord, Data, Typeable)
 
 data Stmt =
-    Defn String Exp
+    Defn String Ty Exp
   deriving (Show, Eq, Ord, Data, Typeable)
 
 lexeme p = spaces *> p <* spaces
@@ -146,8 +150,8 @@ pretty e@(Abs _ _) = "(λ" ++ go e ++ ")"
         go e = ". " ++ pretty e
 pretty (StrLit s) = "\"" ++ s ++ "\""
 pretty (IntLit i) = show i
-pretty (Inl e t) = "(inl " ++ pretty e ++ " as " ++ prettyTy t ++ ")"
-pretty (Inr e t) = "(inr " ++ pretty e ++ " as " ++ prettyTy t ++ ")"
+pretty (Inl e) = "(inl " ++ pretty e ++ ")"
+pretty (Inr e) = "(inr " ++ pretty e ++ ")"
 pretty (MkPair e1 e2) = "(" ++ pretty e1 ++ " , " ++ pretty e2 ++ ")"
 pretty MkUnit = "()"
 -- pretty (Quasiquote e) = "`(" ++ pretty e ++ ")"
@@ -193,7 +197,7 @@ substTy :: String -> Ty -> Ty -> Ty
 substTy x v(Arr t1 t2) = Arr (substTy x v t1) (substTy x v t2)
 substTy x v(Sum t1 t2) = Sum (substTy x v t1) (substTy x v t2)
 substTy x v(Pair t1 t2) = Pair (substTy x v t1) (substTy x v t2)
-substTy x v (Mu y t) | x /= y = Mu y (substTy x v t) -- capture!!!
+substTy x v (Mu y t) | x /= y = Mu y (substTy x v t) -- capture!!! but assume type names are unique. 
 substTy x v (TyVar y) | x == y = v
 substTy _ _ t = t
 
@@ -219,16 +223,18 @@ inferTy' ctx (Unfold e) = do
     Mu x body -> return (substTy x (Mu x body) body)
     _ -> Nothing
 inferTy' ctx (MkPair e1 e2) = Pair <$> inferTy' ctx e1 <*> inferTy' ctx e2
-inferTy' ctx (Inl e t) = do
+inferTy' ctx (Inl e) = do
   t1' <- inferTy' ctx e
-  case t of
-    Sum t1 t2 | t1 == t1' -> Just t
-    _ -> Nothing
-inferTy' ctx (Inr e t) = do
+  Nothing
+  -- case t of
+  --   Sum t1 t2 | t1 == t1' -> Just t
+  --   _ -> Nothing
+inferTy' ctx (Inr e) = do
   t2' <- inferTy' ctx e
-  case t of
-    Sum t1 t2 | t1 == t2' -> Just t
-    _ -> Nothing
+  Nothing
+  -- case t of
+  --   Sum t1 t2 | t1 == t2' -> Just t
+  --   _ -> Nothing
 
 inferTy :: Exp -> Maybe Ty
 inferTy = inferTy' M.empty
@@ -290,11 +296,11 @@ instance Data a => Bridge a where
         -- argMap = zip (getConstrs @a) (allConstrArgs (mkD @a))
 
         sums :: [Constr] -> Exp -> Exp
-        sums [x, y] e | x == toConstr v = Inl e undefined
-                      | y == toConstr v = Inr e undefined
+        sums [x, y] e | x == toConstr v = Inl e
+                      | y == toConstr v = Inr e
         sums [x] e = e
-        sums (x:xs) e | x == toConstr v = Inl e undefined
-                      | otherwise = Inr (sums xs e) undefined
+        sums (x:xs) e | x == toConstr v = Inl e
+                      | otherwise = Inr (sums xs e)
 
         reifyArg :: forall d. Data d => d -> Exp
         reifyArg x = reify @d x
@@ -316,10 +322,10 @@ instance Data a => Bridge a where
         ctors = getConstrs @a
 
         countSums n e | n + 1 == length ctors = (n, e)
-        countSums n (Inr (Inr e t) t') = countSums (n + 1) (Inr e t)
-        countSums n (Inr (Inl e t) t') = (n + 1, e)
-        countSums n (Inr e t) = (n + 1, e)
-        countSums n (Inl e t) = (n, e)
+        countSums n (Inr (Inr e)) = countSums (n + 1) (Inr e)
+        countSums n (Inr (Inl e)) = (n + 1, e)
+        countSums n (Inr e) = (n + 1, e)
+        countSums n (Inl e) = (n, e)
         countSums n e = (n, e)
 
         -- we should only strip Inl/Inr as much as it's allowed

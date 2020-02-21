@@ -1,0 +1,204 @@
+\documentclass[acmsmall, review=false, screen]{acmart}
+% \settopmatter{printacmref=false} % Removes citation information below abstract
+% \renewcommand\footnotetextcopyrightpermission[1]{} % removes footnote with conference information in first column
+% \pagestyle{plain} % removes running headers
+
+% Copyright
+%\setcopyright{none}
+%\setcopyright{acmcopyright}
+\setcopyright{acmlicensed}
+%\setcopyright{rightsretained}
+%\setcopyright{usgov}
+%\setcopyright{usgovmixed}
+%\setcopyright{cagov}
+%\setcopyright{cagovmixed}
+
+%Conference
+\acmConference[ICFP '20]{International Conference on Functional Programming}{August 23-28, 2020}{New Jersey, USA}
+\acmBooktitle{International Conference on Functional Programming}
+\acmYear{2020}
+\copyrightyear{2020}
+\acmPrice{15.00}
+\acmSubmissionID{}
+\acmDOI{}
+\acmISBN{}
+
+\usepackage{enumerate, enumitem}
+\usepackage{fancyvrb}
+\fvset{commandchars=\\\{\}}
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{textgreek}
+\usepackage{todonotes}
+\usepackage{tikz-cd}
+\usepackage{adjustbox}
+\usepackage{multicol}
+% Code
+% in REPL run `:pp latex 80 <expr>` to get the colored verbatim
+
+\usepackage{amssymb}
+\newcommand\fakeslant[1]{%
+  \special{pdf: literal 1 0 0.167 1 0 0 cm}#1\special{pdf: literal 1 0 -0.167 1 0 0 cm}}
+\definecolor{CodeRed}{HTML}{BC0045}
+\definecolor{CodeBlue}{HTML}{0000d6}
+\definecolor{CodeGreen}{HTML}{008b00}
+\definecolor{CodeLilac}{HTML}{AC22BF}
+\definecolor{CodeYellow}{HTML}{E16800}
+\definecolor{CodeLightBlue}{HTML}{A4CDFF}
+\newcommand{\CodeData}[1]{\textcolor{CodeRed}{#1}}
+\newcommand{\CodeType}[1]{\textcolor{CodeBlue}{#1}}
+\newcommand{\CodeBound}[1]{\textcolor{CodeLilac}{\fakeslant{#1}}}
+\newcommand{\CodeFunction}[1]{\textcolor{CodeGreen}{#1}}
+\newcommand{\CodeMetavar}[1]{\textcolor{CodeYellow}{#1}}
+\newcommand{\CodeKeyword}[1]{{\textbf{#1}}}
+\newcommand{\CodeImplicit}[1]{{\itshape \CodeBound{#1}}}
+\newcommand{\ty}[1]{\CodeType{\texttt{#1}}}
+\newcommand{\kw}[1]{\CodeKeyword{\texttt{#1}}}
+\newcommand{\fn}[1]{\CodeFunction{\texttt{#1}}}
+\newcommand{\dt}[1]{\CodeData{\texttt{#1}}}
+\newcommand{\bn}[1]{\CodeBound{\texttt{#1}}}
+\newcommand{\cm}[1]{\textcolor{darkgray}{\texttt{#1}}}
+\newcommand{\hole}[1]{\CodeMetavar{\texttt{?}\CodeMetavar{\texttt{#1}}}}
+\newcommand{\Elab}{\ty{Elab}}
+\newcommand{\IO}{\ty{IO}}
+\newcommand{\String}{\ty{String}}
+\newcommand{\TT}{\ty{TT}}
+\newcommand{\Raw}{\ty{Raw}}
+\newcommand{\Editorable}{\ty{Editorable}}
+\newcommand{\TyDecl}{\ty{TyDecl}}
+\newcommand{\FunDefn}{\ty{FunDefn}}
+\newcommand{\FunClause}{\ty{FunClause}}
+\newcommand{\Edit}{\ty{Edit}}
+\newcommand{\sexp}{\mbox{S-expression}} %don't hyphenate
+\newcommand{\mt}[1]{\mbox{\texttt{#1}}}
+\newcommand{\Prim}[1]{\dt{Prim\_\_#1}}
+\newcommand{\qt}[1]{\kw{\`{}(}{#1}\kw{)}} %quotation `(...)
+\newcommand{\antiqt}{\kw{\textasciitilde}} %antiquotation ~
+
+\newcommand{\lam}{\texorpdfstring{\textlambda}{lambda}}
+\newcommand{\Lam}{\texorpdfstring{\textlambda}{Lambda}}
+\newcommand{\moo}{\texorpdfstring{\textmu}{mu}}
+% \newcommand{\lam}{\textlambda}
+% \newcommand{\Lam}{\textlambda}
+% \newcommand{\moo}{\textmu}
+
+% Replicating selecting regions in the editor:
+% \newcommand{\select}[1]{\fcolorbox{black}{CodeLightBlue}{#1}}
+% A version of select without any space around the box.
+% Hard to see in black & white so I chose the one with the space
+\newcommand{\select}[1]{{\setlength{\fboxsep}{0.05cm}\fcolorbox{black}{CodeLightBlue}{#1}}}
+
+\newcommand{\Red}[1]{{\color{red} #1}}
+\newcommand{\TODO}[1]{{\color{red}{[TODO: #1]}}}
+\newcommand{\FYI}[1]{{\color{green}{[FYI: #1]}}}
+\newcommand{\forceindent}{\hspace{\parindent}}
+
+\usepackage[normalem]{ulem}
+\makeatletter
+\newcommand\colorwave[1][blue]{\bgroup \markoverwith{\lower3.5\p@\hbox{\sixly \textcolor{#1}{\char58}}}\ULon}
+\font\sixly=lasy6 % does not re-load if already loaded, so no memory problem.
+\makeatother
+\newcommand{\CodeError}[1]{\colorwave[red]{#1}}
+
+\sloppy
+\hyphenpenalty=10000
+
+%% Get rid of sloppy line breaks in \citet citations
+\bibpunct{\nolinebreak[4][}{]}{,}{n}{}{,}
+\makeatletter
+\renewcommand*{\NAT@spacechar}{~}
+\makeatother
+
+
+\setenumerate{label=(\arabic*), parsep=0pt}
+
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+
+\begin{document}
+\title{Direct Reflection for Free!}
+\subtitle{}
+
+\author{Joomy Korkut}
+\orcid{0000-0001-6784-7108}
+\affiliation{
+  \institution{Princeton University}
+  \city{Princeton}
+  \state{New Jersey}
+  \country{USA}
+}
+\email{joomy@cs.princeton.edu}
+
+% \author{Kathrin Stark}
+% \orcid{}
+% \affiliation{
+%   \institution{Princeton University}
+%   \city{Princeton}
+%   \state{New Jersey}
+%   \country{USA}
+% }
+% \email{kstark@princeton.edu}
+
+% \renewcommand{\shortauthors}{Joomy Korkut and Kathrin Stark}
+\renewcommand{\shortauthors}{Joomy Korkut}
+
+\newcommand{\lc}{\mbox{\lam-calculus}}
+\newcommand{\Lc}{\mbox{\Lam-calculus}}
+
+\begin{abstract}
+Programming language researchers implement new languages all the time, and there is a lot of boilerplate that goes into new implementations. Reducing this boilerplate has been a popular field of research; we have tools that generate parsers, typing and evaluation derivations, proofs about certain properties, even beatifully typeset inference rules about our object languages. One kind of boilerplate that has been left relatively unexplored is generating implementations of metaprogramming features for our object languages. In this paper we introduce a design pattern that takes advantage of the metaprogramming and generic programming abilities of the host language to derive various metaprogramming features for the object language. This derivation requires the language implementer to describe how host language terms are encoded in / decoded from the object language terms. Once the description is written, if you have evaluation, you can evaluate quasiquoted terms for free. If you have type-checking, you can type-check quasiquoted terms for free. If you have a parser, you can have parser reflection for free.
+
+We demonstrate the usefulness of this design pattern by employing it for different kinds of object languages: untyped, structurally typed and nominally typed ones. To show that this design pattern is language-agnostic, we use Haskell, JavaScript and Coq as the host languages. 
+  
+  % While we use Haskell, Java as our host language, the design pattern we describe is language-agnostic, as long as the language possesses the required metaprogramming powers.
+\end{abstract}
+
+% The code below should be generated by the tool at
+% http://dl.acm.org/ccs.cfm
+% Please copy and insert the code instead of the example below.
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10011007.10011006.10011008.10011009.10011012</concept_id>
+<concept_desc>Software and its engineering~Functional languages</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10011006.10011008.10011024.10011028</concept_id>
+<concept_desc>Software and its engineering~Data types and structures</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[300]{Software and its engineering~Functional languages}
+\ccsdesc[300]{Software and its engineering~Data types and structures}
+
+\keywords{Metaprogramming, generic programming, reflection, Haskell.}
+
+\maketitle
+\thispagestyle{empty}
+
+
+\emph{This paper uses colors in the example code.}
+
+\section{Introduction}
+
+Programming languages research often involves defining and implementing new languages, often minimal toy languages. These toy languages have a lot of similarities; their parsers, pretty printers, interpreters are all alike. If they are writing machine checked proofs about substitution and other shared mechanisms, those proofs are also all alike. Despite this similarity, most researchers end up rolling out their own version of them. This observation is almost as old as the programming languages field itself. Compiler-compilers, or metacompilers, have been a fruitful research area. The lexer generator \texttt{lex} and the parser generator \texttt{yacc}, for example, are examples of mainstream tools that came out of this area. More recently Ott~\cite{ott} has become an indispensable tool for programming language researchers, allowing users to write a language description and obtain code in proof assistants like Coq, HOL and Isabelle, and boilerplate in OCaml, and even typesetting of the inference rules of the object language in \LaTeX.
+Redex~\cite{redex} is another tool, which is written as an embedded domain-specific language in Racket, that provides semantic engineering capabilities in exchange for the grammar and the reduction rules of an object language. One might argue that Racket in general is not only a host language, but also a collection of programming language development tools~\cite{racketManifesto}. 
+On the proof assistant side, Autosubst~\cite{autosubst1, autosubst2} is a Coq framework that automates a significant part of mechanized metatheory proofs. What all these projects have in common is that they try to automate a repetitive task and hence they not only eliminate the need to write them in the first place, but also reduce the cost of maintenance significantly. A simple addition to the object language does not require effort to update everything else anymore, the parser, typesetting, metatheory lemmas etc. are generated for the updated object language automatically, so they do not go out of date. We aim to achieve the same goal for metaprogramming system implementations.
+
+Unlike most systems mentioned above, our solution to generate metaprogramming features is not a tool or a framework within a single host language, but a design pattern applicable to many different host languages and generic programming or metaprogramming systems in these host languages. Moreover, we can reimagine this design pattern to fit different kinds of object languages to implement different kinds of metaprogramming.
+% We demonstrate the flexibility of our design pattern by applying it in Haskell, using 
+
+
+
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{paper}
+
+\end{document}

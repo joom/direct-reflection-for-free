@@ -1,0 +1,248 @@
+\documentclass[format=acmsmall, review=false, screen=true]{acmart}
+\settopmatter{printacmref=false} % Removes citation information below abstract
+\renewcommand\footnotetextcopyrightpermission[1]{} % removes footnote with conference information in first column
+\pagestyle{plain} % removes running headers
+
+% Copyright
+\setcopyright{none}
+%\setcopyright{acmcopyright}
+%\setcopyright{acmlicensed}
+%\setcopyright{rightsretained}
+%\setcopyright{usgov}
+%\setcopyright{usgovmixed}
+%\setcopyright{cagov}
+%\setcopyright{cagovmixed}
+
+% DOI
+\acmDOI{}
+
+% ISBN
+\acmISBN{}
+
+%Conference
+\acmConference[ICFP '20]{International Conference on Functional Programming}{August 2020}{Jersey City, New Jersey, USA}
+\acmBooktitle{International Conference on Functional Programming}
+\acmYear{2020}
+\copyrightyear{2020}
+\acmPrice{15.00}
+\acmSubmissionID{}
+
+\usepackage{enumerate, enumitem}
+\usepackage{fancyvrb}
+\fvset{commandchars=\\\{\}}
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{textgreek}
+\usepackage{todonotes}
+\usepackage{tikz-cd}
+\usepackage{adjustbox}
+\usepackage{multicol}
+% Code
+% in REPL run `:pp latex 80 <expr>` to get the colored verbatim
+
+\usepackage{amssymb}
+\newcommand\fakeslant[1]{%
+  \special{pdf: literal 1 0 0.167 1 0 0 cm}#1\special{pdf: literal 1 0 -0.167 1 0 0 cm}}
+\definecolor{CodeRed}{HTML}{BC0045}
+\definecolor{CodeBlue}{HTML}{0000d6}
+\definecolor{CodeGreen}{HTML}{008b00}
+\definecolor{CodeLilac}{HTML}{AC22BF}
+\definecolor{CodeYellow}{HTML}{E16800}
+\definecolor{CodeLightBlue}{HTML}{A4CDFF}
+\newcommand{\CodeData}[1]{\textcolor{CodeRed}{#1}}
+\newcommand{\CodeType}[1]{\textcolor{CodeBlue}{#1}}
+\newcommand{\CodeBound}[1]{\textcolor{CodeLilac}{\fakeslant{#1}}}
+\newcommand{\CodeFunction}[1]{\textcolor{CodeGreen}{#1}}
+\newcommand{\CodeMetavar}[1]{\textcolor{CodeYellow}{#1}}
+\newcommand{\CodeKeyword}[1]{{\textbf{#1}}}
+\newcommand{\CodeImplicit}[1]{{\itshape \CodeBound{#1}}}
+\newcommand{\ty}[1]{\CodeType{\texttt{#1}}}
+\newcommand{\kw}[1]{\CodeKeyword{\texttt{#1}}}
+\newcommand{\fn}[1]{\CodeFunction{\texttt{#1}}}
+\newcommand{\dt}[1]{\CodeData{\texttt{#1}}}
+\newcommand{\bn}[1]{\CodeBound{\texttt{#1}}}
+\newcommand{\cm}[1]{\textcolor{darkgray}{\texttt{#1}}}
+\newcommand{\hole}[1]{\CodeMetavar{\texttt{?}\CodeMetavar{\texttt{#1}}}}
+\newcommand{\Elab}{\ty{Elab}}
+\newcommand{\IO}{\ty{IO}}
+\newcommand{\String}{\ty{String}}
+\newcommand{\TT}{\ty{TT}}
+\newcommand{\Raw}{\ty{Raw}}
+\newcommand{\Editorable}{\ty{Editorable}}
+\newcommand{\TyDecl}{\ty{TyDecl}}
+\newcommand{\FunDefn}{\ty{FunDefn}}
+\newcommand{\FunClause}{\ty{FunClause}}
+\newcommand{\Edit}{\ty{Edit}}
+\newcommand{\sexp}{\mbox{S-expression}} %don't hyphenate
+\newcommand{\mt}[1]{\mbox{\texttt{#1}}}
+\newcommand{\Prim}[1]{\dt{Prim\_\_#1}}
+\newcommand{\qt}[1]{\kw{\`{}(}{#1}\kw{)}} %quotation `(...)
+\newcommand{\antiqt}{\kw{\textasciitilde}} %antiquotation ~
+
+\newcommand{\lam}{\texorpdfstring{\textlambda}{lambda}}
+\newcommand{\Lam}{\texorpdfstring{\textlambda}{Lambda}}
+\newcommand{\moo}{\texorpdfstring{\textmu}{mu}}
+% \newcommand{\lam}{\textlambda}
+% \newcommand{\Lam}{\textlambda}
+% \newcommand{\moo}{\textmu}
+
+% Replicating selecting regions in the editor:
+% \newcommand{\select}[1]{\fcolorbox{black}{CodeLightBlue}{#1}}
+% A version of select without any space around the box.
+% Hard to see in black & white so I chose the one with the space
+\newcommand{\select}[1]{{\setlength{\fboxsep}{0.05cm}\fcolorbox{black}{CodeLightBlue}{#1}}}
+
+\newcommand{\Red}[1]{{\color{red} #1}}
+\newcommand{\TODO}[1]{{\color{red}{[TODO: #1]}}}
+\newcommand{\FYI}[1]{{\color{green}{[FYI: #1]}}}
+\newcommand{\forceindent}{\hspace{\parindent}}
+
+\usepackage[normalem]{ulem}
+\makeatletter
+\newcommand\colorwave[1][blue]{\bgroup \markoverwith{\lower3.5\p@\hbox{\sixly \textcolor{#1}{\char58}}}\ULon}
+\font\sixly=lasy6 % does not re-load if already loaded, so no memory problem.
+\makeatother
+\newcommand{\CodeError}[1]{\colorwave[red]{#1}}
+
+\newcommand\mlnode[1]{
+  \begin{minipage}{1.5cm}
+    \linespread{1}\selectfont
+    \vspace{0.3cm}
+    \begin{center}
+      #1
+    \end{center}
+    \vspace{0.3cm}
+  \end{minipage}}
+
+\sloppy
+\hyphenpenalty=10000
+
+%% Get rid of sloppy line breaks in \citet citations
+\bibpunct{\nolinebreak[4][}{]}{,}{n}{}{,}
+\makeatletter
+\renewcommand*{\NAT@spacechar}{~}
+\makeatother
+
+
+\setenumerate{label=(\arabic*), parsep=0pt}
+
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+
+\begin{document}
+\title{Semiotics of Metaprogramming}
+\subtitle{}
+
+\author{Joomy Korkut}
+\orcid{0000-0001-6784-7108}
+\affiliation{
+  \institution{Princeton University}
+  \city{Princeton}
+  \state{New Jersey}
+  \country{USA}
+}
+\email{joomy@cs.princeton.edu}
+
+\renewcommand{\shortauthors}{Joomy Korkut}
+
+\newcommand{\lc}{\mbox{\lam-calculus}}
+\newcommand{\Lc}{\mbox{\Lam-calculus}}
+
+% \begin{abstract}
+% Haskell is a popular language for language implementations. However, adding metaprogramming features to a language implemented in Haskell requires a significant amount of boilerplate code. Using Data and Typeable style of generic programming in Haskell, we describe a design pattern that allows automatic derivation of metaprogramming features from your language implementation. If you have evaluation, you can evaluate quasiquoted terms for free. If you have type-checking, you can type-check quasiquoted terms for free. If you have a parser, you can have parser reflection for free. This design pattern is applicable to both untyped and typed languages, and can implement various features of metaprogramming.
+% \end{abstract}
+
+% The code below should be generated by the tool at
+% http://dl.acm.org/ccs.cfm
+% Please copy and insert the code instead of the example below.
+% \begin{CCSXML}
+% <ccs2012>
+% <concept>
+% <concept_id>10011007.10011006.10011008.10011009.10011012</concept_id>
+% <concept_desc>Software and its engineering~Functional languages</concept_desc>
+% <concept_significance>300</concept_significance>
+% </concept>
+% <concept>
+% <concept_id>10011007.10011006.10011008.10011024.10011028</concept_id>
+% <concept_desc>Software and its engineering~Data types and structures</concept_desc>
+% <concept_significance>300</concept_significance>
+% </concept>
+% </ccs2012>
+% \end{CCSXML}
+
+% \ccsdesc[300]{Software and its engineering~Functional languages}
+% \ccsdesc[300]{Software and its engineering~Data types and structures}
+
+% \keywords{Metaprogramming, generic programming, reflection, Haskell.}
+
+\maketitle
+\thispagestyle{empty}
+
+
+% \emph{This paper uses colors in the example code.}
+
+\section{Introduction}
+
+
+
+Haskell is considered to be one of the best in class for language implementations~\cite{sotu}.
+
+% \section{Semiotic Foundations of Metaprogramming}
+
+In the semiotics theory of Charles Sanders Peirce, a sign consists of three elements:
+
+\begin{tikzcd}
+\mlnode{Representamen}
+  \arrow[rrrr, sloped, above, "\text{materializes into}" description, shift left=3]
+  \arrow[rrdddd, sloped, above, "\text{decodes into}" description, shift left=3] &  &  &  &
+\mlnode{Object}
+  \arrow[llll, sloped, below, "\text{is represented by}" description, shift left=3]
+  \arrow[lldddd, sloped, below, "\text{indicates}" description, shift left=3] \\
+&  &  &  & \\
+&  &  &  & \\
+&  &  &  & \\
+&  &
+\mlnode{Interpretant}
+  \arrow[lluuuu, sloped, below, "\text{encodes into}" description, shift left=3]
+  \arrow[rruuuu, sloped, above, "\text{is denoted by}" description, shift left=3]
+&  &
+\end{tikzcd}
+
+An interpretant is a sign's effect on the mind. For example, a stop sign in the traffic would be the representamen, and its object would the stop rule. Its interpretant would be the thought that you should stop there.
+
+The intuition behind applying semiotic theory to metaprogramming is that your interpreter and compiler can also be considered a mind.
+
+\begin{tikzcd}
+\mlnode{object language term}
+  \arrow[rrrr, sloped, above, "\text{materializes into}" description, shift left=3]
+  \arrow[rrdddd, sloped, above, "\text{decodes into}" description, shift left=3] &  &  &  &
+\mlnode{represented entity}
+  \arrow[llll, sloped, below, "\text{is represented by}" description, shift left=3]
+  \arrow[lldddd, sloped, below, "\text{indicates}" description, shift left=3] \\
+&  &  &  & \\
+&  &  &  & \\
+&  &  &  & \\
+&  &
+\mlnode{host language term}
+  \arrow[lluuuu, sloped, below, "\text{encodes into}" description, shift left=3]
+  \arrow[rruuuu, sloped, above, "\text{is denoted by}" description, shift left=3]
+&  &
+\end{tikzcd}
+
+
+
+
+% \section*{Acknowledgments}
+% We would like to thank Matt Chan and Gabriel Gonzalez for inspiring the idea of
+% a bridge between the meta language and the object language.
+% We would also like to thank Charlie Murphy for his help with the draft.
+% \vspace{0.5em}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{paper}
+
+\end{document}

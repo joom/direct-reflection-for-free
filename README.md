@@ -2,7 +2,9 @@
 
 Documents (TeX, slides etc.) for the work on using `Data` and `Typeable` to get a direct reflection system for free, when we're implementing a toy language in Haskell.
 
-Submission for ICFP 2019 Student Research Competition. [[pdf]](http://www.cs.princeton.edu/~ckorkut/papers/icfp-src-19-reflection.pdf)
+Submitted for the ICFP 2019 Student Research Competition, got 3rd prize in the graduate category. [[pdf]](http://www.cs.princeton.edu/~ckorkut/papers/icfp-src-19-reflection.pdf)
+
+This repo still contains a lot of broken code, it will eventually get straightened out, I'm still working on a full paper.
 
 ## Abstract
 

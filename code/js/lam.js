@@ -132,4 +132,4 @@ const k = new Abs("x", new Abs("y", new Var("x")))
 const z = new Abs("f", new Abs("x", new Var("x")))
 const sz = new Abs("f", new Abs("x", new App(new Var("f"), new Var("x"))))
 
-console.log(descLookup.get(Exp).reflect(descLookup.get(Exp).reify(id)))
+console.log(descLookup.get(Exp).reflect(descLookup.get(Exp).reify(k)))
